@@ -96,3 +96,40 @@ class TrackMapperTest {
         assertEquals(UNKNOWN_TITLE, entity.title)
     }
 }
+
+/** Folder browsing groups on this string, so inconsistent shapes fragment the folder list. */
+class FolderPathTest {
+
+    @Test
+    fun `absolute path yields its parent directory`() {
+        assertEquals(
+            "/storage/emulated/0/Music/Soulseek",
+            folderPathOf("/storage/emulated/0/Music/Soulseek/track.flac", null),
+        )
+    }
+
+    @Test
+    fun `relative path is used when the absolute path is missing`() {
+        assertEquals("Music/Soulseek", folderPathOf(null, "Music/Soulseek/"))
+    }
+
+    @Test
+    fun `the trailing slash on a relative path is dropped`() {
+        assertEquals("Music", folderPathOf(null, "Music/"))
+    }
+
+    @Test
+    fun `absolute path wins when both are present`() {
+        assertEquals("/storage/emulated/0/Download", folderPathOf("/storage/emulated/0/Download/a.mp3", "Download/"))
+    }
+
+    @Test
+    fun `a bare filename with no directory falls through to the relative path`() {
+        assertEquals("Music", folderPathOf("track.mp3", "Music/"))
+    }
+
+    @Test
+    fun `no path information at all yields an empty string, never null`() {
+        assertEquals("", folderPathOf(null, null))
+    }
+}

@@ -34,10 +34,26 @@ fun RawTrack.toEntityOrNull(contentUriBase: String): TrackEntity? {
         albumId = albumId,
         durationMs = durationMs,
         uri = "$contentUriBase/$id",
-        folderPath = "",
+        folderPath = folderPathOf(data, relativePath),
         dateModified = dateModified,
         albumArtUri = null,
     )
+}
+
+/**
+ * The folder a track lives in, for browse-by-folder.
+ *
+ * Prefers the absolute path's parent, which is what users recognise. `DATA` is deprecated and can
+ * be null under scoped storage, so `RELATIVE_PATH` (API 29+) is the fallback; its trailing slash is
+ * dropped so the two forms sort and group consistently.
+ */
+fun folderPathOf(data: String?, relativePath: String?): String {
+    data.cleanTag()?.let { path ->
+        val parent = path.substringBeforeLast('/', missingDelimiterValue = "")
+        if (parent.isNotEmpty()) return parent
+    }
+    relativePath.cleanTag()?.let { return it.trimEnd('/') }
+    return ""
 }
 
 /** Null, blank, and MediaStore's `<unknown>` sentinel all mean "no tag". */
