@@ -11,6 +11,9 @@ import com.example.slipmat.core.data.scan.MediaStoreScanner
 import com.example.slipmat.core.data.scan.toEntityOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,6 +29,11 @@ class LibraryRepository @Inject constructor(
     private val trackDao: TrackDao,
     private val database: SlipmatDatabase,
 ) {
+
+    private val _scanState = MutableStateFlow<ScanState>(ScanState.Idle)
+
+    /** Observable scan progress, so the UI can show something during a long first scan. */
+    val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
 
     fun observeTracks(): Flow<List<TrackEntity>> = trackDao.observeAllTracks()
 
@@ -48,7 +56,18 @@ class LibraryRepository @Inject constructor(
      * library with deletions applied and insertions missing.
      */
     suspend fun scanIncremental(): ScanDiff = withContext(Dispatchers.IO) {
-        val scanned = scanner.queryAudio().mapNotNull { it.toEntityOrNull(CONTENT_URI_BASE) }
+        _scanState.value = ScanState.Scanning(done = 0, total = 0)
+
+        val rows = scanner.queryAudio()
+        val scanned = ArrayList<TrackEntity>(rows.size)
+        rows.forEachIndexed { index, row ->
+            row.toEntityOrNull(CONTENT_URI_BASE)?.let(scanned::add)
+            // Reporting every row would thrash the flow on a large library.
+            if (index % PROGRESS_STRIDE == 0) {
+                _scanState.value = ScanState.Scanning(done = index, total = rows.size)
+            }
+        }
+
         val diff = computeScanDiff(scanned, trackDao.getAllIdsWithDateModified())
 
         if (!diff.isEmpty) {
@@ -61,6 +80,10 @@ class LibraryRepository @Inject constructor(
                     .forEach { trackDao.upsertAll(it) }
             }
         }
+        _scanState.value = ScanState.Complete(
+            trackCount = scanned.size,
+            changeCount = diff.changeCount,
+        )
         diff
     }
 
@@ -69,5 +92,8 @@ class LibraryRepository @Inject constructor(
 
         /** SQLite's default `SQLITE_MAX_VARIABLE_NUMBER` is 999; stay comfortably under it. */
         const val SQLITE_VARIABLE_LIMIT = 900
+
+        /** Emit progress every N rows rather than on every one. */
+        const val PROGRESS_STRIDE = 50
     }
 }
