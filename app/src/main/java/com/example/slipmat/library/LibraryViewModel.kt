@@ -2,6 +2,9 @@ package com.example.slipmat.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.slipmat.core.data.db.AlbumSummary
+import com.example.slipmat.core.data.db.ArtistSummary
+import com.example.slipmat.core.data.db.FolderSummary
 import com.example.slipmat.core.data.library.LibraryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +29,18 @@ class LibraryViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = LibraryUiState(),
         )
+
+    // Each list is its own flow, so opening the album tab never runs the artist query. Room
+    // flows are lazy and WhileSubscribed stops them when nothing is looking.
+    val artists: StateFlow<List<ArtistSummary>> = repository.observeArtists().asList()
+    val albums: StateFlow<List<AlbumSummary>> = repository.observeAlbums().asList()
+    val folders: StateFlow<List<FolderSummary>> = repository.observeFolders().asList()
+
+    private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.asList(): StateFlow<List<T>> = stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+        initialValue = emptyList(),
+    )
 
     /** Safe to call repeatedly; an unchanged library produces no database writes. */
     fun refresh() {

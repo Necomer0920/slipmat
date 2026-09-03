@@ -5,6 +5,9 @@ import androidx.room.withTransaction
 import com.example.slipmat.core.data.db.SlipmatDatabase
 import com.example.slipmat.core.data.scan.ScanDiff
 import com.example.slipmat.core.data.scan.computeScanDiff
+import com.example.slipmat.core.data.db.AlbumSummary
+import com.example.slipmat.core.data.db.ArtistSummary
+import com.example.slipmat.core.data.db.FolderSummary
 import com.example.slipmat.core.data.db.TrackDao
 import com.example.slipmat.core.data.db.TrackEntity
 import com.example.slipmat.core.data.scan.AudioSource
@@ -36,6 +39,22 @@ class LibraryRepository @Inject constructor(
     val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
 
     fun observeTracks(): Flow<List<TrackEntity>> = trackDao.observeAllTracks()
+
+    // Browse lists are GROUP BY results, computed on demand rather than stored.
+    fun observeArtists(): Flow<List<ArtistSummary>> = trackDao.observeArtists()
+
+    fun observeAlbums(): Flow<List<AlbumSummary>> = trackDao.observeAlbums()
+
+    fun observeFolders(): Flow<List<FolderSummary>> = trackDao.observeFolders()
+
+    fun observeTracksByArtist(artist: String): Flow<List<TrackEntity>> =
+        trackDao.observeTracksByArtist(artist)
+
+    fun observeTracksInAlbum(album: String, albumArtist: String): Flow<List<TrackEntity>> =
+        trackDao.observeTracksInAlbum(album, albumArtist)
+
+    fun observeTracksInFolder(folderPath: String): Flow<List<TrackEntity>> =
+        trackDao.observeTracksInFolder(folderPath)
 
     /**
      * Full scan: read everything MediaStore has and write it all.
