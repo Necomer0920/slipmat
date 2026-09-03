@@ -25,6 +25,8 @@ import com.example.slipmat.library.DetailArgs
 import com.example.slipmat.library.FolderDetailScreen
 import com.example.slipmat.library.FolderListScreen
 import com.example.slipmat.library.LibraryScreen
+import com.example.slipmat.nowplaying.MiniPlayer
+import com.example.slipmat.nowplaying.NowPlayingScreen
 
 /** The four browse modes. */
 enum class BrowseTab(val route: String, val label: String) {
@@ -47,6 +49,8 @@ private object Routes {
     fun artist(name: String) = "artist/${Uri.encode(name)}"
     fun album(album: String, artist: String) = "album/${Uri.encode(album)}/${Uri.encode(artist)}"
     fun folder(path: String) = "folder/${Uri.encode(path)}"
+
+    const val NOW_PLAYING = "nowPlaying"
 }
 
 @Composable
@@ -55,6 +59,10 @@ fun SlipmatNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    val onNowPlaying = currentRoute == Routes.NOW_PLAYING
+
     Column(modifier = modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
@@ -99,17 +107,22 @@ fun SlipmatNavHost(
             ) {
                 FolderDetailScreen(onBack = { navController.popBackStack() }, onPlay = onPlay)
             }
+            composable(Routes.NOW_PLAYING) {
+                NowPlayingScreen(onBack = { navController.popBackStack() })
+            }
         }
 
-        BrowseBottomBar(navController)
+        // The now-playing screen already shows everything the strip does, and the tab bar is
+        // meaningless there, so both step aside rather than stacking up redundant chrome.
+        if (!onNowPlaying) {
+            MiniPlayer(onClick = { navController.navigate(Routes.NOW_PLAYING) })
+            BrowseBottomBar(navController, currentRoute)
+        }
     }
 }
 
 @Composable
-private fun BrowseBottomBar(navController: NavHostController) {
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
-
+private fun BrowseBottomBar(navController: NavHostController, currentRoute: String?) {
     NavigationBar {
         BrowseTab.entries.forEach { tab ->
             NavigationBarItem(
