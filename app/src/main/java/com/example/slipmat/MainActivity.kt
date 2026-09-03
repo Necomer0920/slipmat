@@ -1,4 +1,4 @@
-xpackage com.example.slipmat
+package com.example.slipmat
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
