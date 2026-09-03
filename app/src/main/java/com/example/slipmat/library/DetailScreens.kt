@@ -2,7 +2,10 @@ package com.example.slipmat.library
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -42,10 +45,8 @@ private fun DetailScaffold(
                 }
             },
             navigationIcon = {
-                // A glyph rather than a vector asset: material-icons is a separate artifact whose
-                // coordinates keep moving between Compose releases, and this needs no dependency.
                 IconButton(onClick = onBack) {
-                    Text(text = "←", style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
         )

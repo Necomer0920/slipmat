@@ -9,7 +9,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -150,21 +158,35 @@ private fun TransportControls(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TransportButton(label = "\u23ee", onClick = viewModel::previous, enabled = state.hasMedia)
         TransportButton(
-            label = if (state.isPlaying) "\u23f8" else "\u25b6",
+            icon = Icons.Filled.SkipPrevious,
+            description = "Previous track",
+            onClick = viewModel::previous,
+            enabled = state.hasMedia,
+        )
+        TransportButton(
+            icon = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            description = if (state.isPlaying) "Pause" else "Play",
             onClick = viewModel::togglePlayPause,
             enabled = state.hasMedia,
         )
-        TransportButton(label = "\u23ed", onClick = viewModel::next, enabled = state.hasMedia)
+        TransportButton(
+            icon = Icons.Filled.SkipNext,
+            description = "Next track",
+            onClick = viewModel::next,
+            enabled = state.hasMedia,
+        )
     }
 }
 
 @Composable
-private fun TransportButton(label: String, onClick: () -> Unit, enabled: Boolean) {
+private fun TransportButton(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
     IconButton(onClick = onClick, enabled = enabled) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(text = label, style = MaterialTheme.typography.headlineSmall)
-        }
+        Icon(imageVector = icon, contentDescription = description)
     }
 }
