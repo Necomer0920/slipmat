@@ -133,3 +133,55 @@ class FolderPathTest {
         assertEquals("", folderPathOf(null, null))
     }
 }
+
+/**
+ * Compilations are the case this exists for: twelve tracks sharing one album but each tagged with
+ * a different artist. Grouping on artist turns that into twelve one-track albums.
+ */
+class AlbumArtistTest {
+
+    private fun raw(artist: String?, albumArtist: String?) = RawTrack(
+        id = 1L,
+        title = "Title",
+        artist = artist,
+        albumArtist = albumArtist,
+        album = "Various Hits",
+        albumId = 7L,
+        durationMs = 60_000,
+        dateModified = 0L,
+        displayName = "file.mp3",
+        data = null,
+        relativePath = null,
+    )
+
+    @Test
+    fun `album artist is used when the file has one`() {
+        val entity = raw(artist = "Guest Vocalist", albumArtist = "Various Artists")
+            .toEntityOrNull(BASE)!!
+
+        assertEquals("Various Artists", entity.albumArtist)
+        assertEquals("Guest Vocalist", entity.artist)
+    }
+
+    @Test
+    fun `album artist falls back to artist when absent`() {
+        val entity = raw(artist = "Solo Act", albumArtist = null).toEntityOrNull(BASE)!!
+
+        assertEquals("Solo Act", entity.albumArtist)
+    }
+
+    @Test
+    fun `the unknown sentinel in album artist falls back to artist`() {
+        val entity = raw(artist = "Solo Act", albumArtist = MEDIASTORE_UNKNOWN).toEntityOrNull(BASE)!!
+
+        assertEquals("Solo Act", entity.albumArtist)
+    }
+
+    @Test
+    fun `both blank yields Unknown artist in both fields`() {
+        val entity = raw(artist = "  ", albumArtist = null).toEntityOrNull(BASE)!!
+
+        assertEquals(UNKNOWN_ARTIST, entity.artist)
+        assertEquals(UNKNOWN_ARTIST, entity.albumArtist)
+    }
+}
