@@ -14,6 +14,8 @@ data class PlayerState(
     val mediaId: String? = null,
     val title: String? = null,
     val artist: String? = null,
+    /** Artwork location as a plain string; resolving it is the UI's business, not this module's. */
+    val artworkUri: String? = null,
 ) {
     val hasMedia: Boolean get() = mediaId != null
 
@@ -38,6 +40,7 @@ fun playerStateOf(
     mediaId: String? = null,
     title: String? = null,
     artist: String? = null,
+    artworkUri: String? = null,
 ): PlayerState {
     val duration = if (rawDurationMs > 0L) rawDurationMs else 0L
     val position = when {
@@ -52,5 +55,6 @@ fun playerStateOf(
         mediaId = mediaId,
         title = title?.takeIf { it.isNotBlank() },
         artist = artist?.takeIf { it.isNotBlank() },
+        artworkUri = artworkUri?.takeIf { it.isNotBlank() },
     )
 }
