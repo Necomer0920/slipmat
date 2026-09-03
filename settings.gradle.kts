@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Slipmat"
 include(":app")
+include(":core:data")
