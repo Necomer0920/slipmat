@@ -1,24 +1,15 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id("slipmat.android.application")
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.example.slipmat"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
 
     defaultConfig {
         applicationId = "com.example.slipmat"
-        minSdk = 28
-        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -30,10 +21,7 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+
     buildFeatures {
         compose = true
     }
