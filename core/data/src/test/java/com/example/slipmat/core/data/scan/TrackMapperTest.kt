@@ -185,3 +185,23 @@ class AlbumArtistTest {
         assertEquals(UNKNOWN_ARTIST, entity.albumArtist)
     }
 }
+
+class AlbumArtUriTest {
+
+    private fun raw(albumId: Long) = RawTrack(
+        id = 1L, title = "T", artist = "A", albumArtist = null, album = "Al",
+        albumId = albumId, durationMs = 1_000, dateModified = 0L,
+        displayName = null, data = null, relativePath = null,
+    )
+
+    @Test
+    fun `a real album id produces an artwork uri`() {
+        assertEquals("$ALBUM_ART_URI_BASE/42", raw(42L).toEntityOrNull(BASE)!!.albumArtUri)
+    }
+
+    @Test
+    fun `a missing album id yields null rather than a uri pointing at nothing`() {
+        // Zero is what MediaStore reports when it has no album; a uri built from it 404s.
+        assertNull(raw(0L).toEntityOrNull(BASE)!!.albumArtUri)
+    }
+}

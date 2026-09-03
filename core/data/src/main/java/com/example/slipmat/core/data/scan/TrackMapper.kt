@@ -5,6 +5,13 @@ import com.example.slipmat.core.data.db.TrackEntity
 /** What MediaStore returns for a tag it could not read. It is a literal string, not a null. */
 const val MEDIASTORE_UNKNOWN = "<unknown>"
 
+/**
+ * Where album artwork lives. Long-standing and universally used, but never formally documented, so
+ * it is treated as best-effort: a null result must render a placeholder rather than break the row.
+ * ⚠️ Confirm real artwork loads from this on device at Task 3.5.
+ */
+const val ALBUM_ART_URI_BASE = "content://media/external/audio/albumart"
+
 const val UNKNOWN_TITLE = "Unknown title"
 const val UNKNOWN_ARTIST = "Unknown artist"
 const val UNKNOWN_ALBUM = "Unknown album"
@@ -37,7 +44,7 @@ fun RawTrack.toEntityOrNull(contentUriBase: String): TrackEntity? {
         uri = "$contentUriBase/$id",
         folderPath = folderPathOf(data, relativePath),
         dateModified = dateModified,
-        albumArtUri = null,
+        albumArtUri = albumId.takeIf { it > 0L }?.let { "$ALBUM_ART_URI_BASE/$it" },
     )
 }
 
