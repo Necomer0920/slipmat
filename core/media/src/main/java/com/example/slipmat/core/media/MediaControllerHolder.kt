@@ -43,8 +43,7 @@ class MediaControllerHolder @Inject constructor(
         override fun onEvents(player: Player, events: Player.Events) = publish()
     }
 
-    /** Idempotent: safe to call from every Activity that comes and goes. */
-    fun connect() {
+    override fun connect() {
         if (controller != null) return
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, token).buildAsync()
@@ -57,7 +56,7 @@ class MediaControllerHolder @Inject constructor(
         )
     }
 
-    fun release() {
+    override fun release() {
         controller?.removeListener(listener)
         controller?.release()
         controller = null

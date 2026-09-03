@@ -14,6 +14,12 @@ interface PlaybackController {
     /** Current playback state, mirrored from the service. Never held independently by the UI. */
     val state: StateFlow<PlayerState>
 
+    /** Binds to the playback service. Idempotent, so every Activity start may call it. */
+    fun connect()
+
+    /** Drops the binding. Playback continues in the service regardless. */
+    fun release()
+
     fun play()
 
     fun pause()
