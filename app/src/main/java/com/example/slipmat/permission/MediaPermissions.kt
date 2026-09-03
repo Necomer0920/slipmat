@@ -24,4 +24,17 @@ object MediaPermissions {
         } else {
             null
         }
+
+    /**
+     * Reading local audio. API 33 replaced the broad [Manifest.permission.READ_EXTERNAL_STORAGE]
+     * with the narrow [Manifest.permission.READ_MEDIA_AUDIO]; requesting the wrong one for the
+     * running API level is denied without a dialog, which looks exactly like a user refusal.
+     */
+    val audio: String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            @Suppress("DEPRECATION")
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
 }

@@ -36,28 +36,29 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SlipmatApp(modifier: Modifier = Modifier) {
-    RequestNotificationPermission()
+    RequestMediaPermissions()
 }
 
 /**
- * Asks for the notification permission once, on first composition.
+ * Asks for audio access and, on API 33+, notifications — once, on first composition.
  *
- * The result is deliberately ignored: the media notification is a convenience, not a requirement,
- * and playback must work whether or not the user grants it.
+ * The results are deliberately not gating anything yet. Audio access is genuinely required to read
+ * the library and will get a proper rationale screen in Phase 3 (Task 3.2); the notification
+ * permission is a convenience whose denial must never stop playback.
  */
 @Composable
-private fun RequestNotificationPermission() {
+private fun RequestMediaPermissions() {
     val context = LocalContext.current
-    val permission = MediaPermissions.notification
 
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* granted or not, playback is unaffected */ }
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* handled in Phase 3; denial must not break playback */ }
 
-    LaunchedEffect(permission) {
-        if (permission == null) return@LaunchedEffect
-        val alreadyGranted = ContextCompat.checkSelfPermission(context, permission) ==
-            PackageManager.PERMISSION_GRANTED
-        if (!alreadyGranted) launcher.launch(permission)
+    LaunchedEffect(Unit) {
+        val wanted = listOfNotNull(MediaPermissions.audio, MediaPermissions.notification)
+        val missing = wanted.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) launcher.launch(missing.toTypedArray())
     }
 }

@@ -1,2 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Reading the user's library is this module's job, so the permission is declared here rather
+      than in :app. The two are gated on different API levels: READ_MEDIA_AUDIO replaced
+      READ_EXTERNAL_STORAGE in API 33, and asking for the wrong one is silently denied.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+</manifest>
