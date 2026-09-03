@@ -105,6 +105,18 @@ class MediaControllerHolder @Inject constructor(
 
     override fun seekTo(positionMs: Long) = withController { it.seekTo(positionMs) }
 
+    override fun skipForward() = withController {
+        it.seekTo(skipSeekTarget(it.currentPosition, it.duration, SKIP_SEEK_MS))
+    }
+
+    override fun skipBack() = withController {
+        it.seekTo(skipSeekTarget(it.currentPosition, it.duration, -SKIP_SEEK_MS))
+    }
+
+    override fun setShuffle(enabled: Boolean) = withController { it.shuffleModeEnabled = enabled }
+
+    override fun setRepeatMode(mode: RepeatMode) = withController { it.repeatMode = mode.toMedia3() }
+
     private fun withController(block: (MediaController) -> Unit) {
         scope.launch { controller?.let(block) }
     }
@@ -146,9 +158,24 @@ class MediaControllerHolder @Inject constructor(
             title = metadata.title?.toString(),
             artist = metadata.artist?.toString(),
             artworkUri = metadata.artworkUri?.toString(),
+            shuffleEnabled = c.shuffleModeEnabled,
+            repeatMode = c.repeatMode.toRepeatMode(),
         )
     }
 }
 
 /** Fast enough that a seconds readout never looks stuck, cheap enough to ignore. */
 private const val POSITION_POLL_MS = 500L
+
+/** Media3 uses integer constants; the rest of the app uses [RepeatMode]. Translate at the edge. */
+private fun RepeatMode.toMedia3(): Int = when (this) {
+    RepeatMode.Off -> Player.REPEAT_MODE_OFF
+    RepeatMode.All -> Player.REPEAT_MODE_ALL
+    RepeatMode.One -> Player.REPEAT_MODE_ONE
+}
+
+private fun Int.toRepeatMode(): RepeatMode = when (this) {
+    Player.REPEAT_MODE_ALL -> RepeatMode.All
+    Player.REPEAT_MODE_ONE -> RepeatMode.One
+    else -> RepeatMode.Off
+}

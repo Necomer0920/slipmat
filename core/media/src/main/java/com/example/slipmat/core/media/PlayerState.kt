@@ -16,6 +16,8 @@ data class PlayerState(
     val artist: String? = null,
     /** Artwork location as a plain string; resolving it is the UI's business, not this module's. */
     val artworkUri: String? = null,
+    val shuffleEnabled: Boolean = false,
+    val repeatMode: RepeatMode = RepeatMode.Off,
 ) {
     val hasMedia: Boolean get() = mediaId != null
 
@@ -41,6 +43,8 @@ fun playerStateOf(
     title: String? = null,
     artist: String? = null,
     artworkUri: String? = null,
+    shuffleEnabled: Boolean = false,
+    repeatMode: RepeatMode = RepeatMode.Off,
 ): PlayerState {
     val duration = if (rawDurationMs > 0L) rawDurationMs else 0L
     val position = when {
@@ -56,5 +60,7 @@ fun playerStateOf(
         title = title?.takeIf { it.isNotBlank() },
         artist = artist?.takeIf { it.isNotBlank() },
         artworkUri = artworkUri?.takeIf { it.isNotBlank() },
+        shuffleEnabled = shuffleEnabled,
+        repeatMode = repeatMode,
     )
 }

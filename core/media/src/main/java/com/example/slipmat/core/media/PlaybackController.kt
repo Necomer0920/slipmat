@@ -32,4 +32,14 @@ interface PlaybackController {
     fun previous()
 
     fun seekTo(positionMs: Long)
+
+    /** Jump [SKIP_SEEK_MS] forward, clamped to the end of the track. */
+    fun skipForward()
+
+    /** Jump [SKIP_SEEK_MS] back, clamped to the start of the track. */
+    fun skipBack()
+
+    fun setShuffle(enabled: Boolean)
+
+    fun setRepeatMode(mode: RepeatMode)
 }
