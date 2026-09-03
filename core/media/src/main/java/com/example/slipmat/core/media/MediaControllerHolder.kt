@@ -10,7 +10,10 @@ import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +42,9 @@ class MediaControllerHolder @Inject constructor(
 
     private var controller: MediaController? = null
 
+    /** Drives position updates while playing; see [syncTicker]. */
+    private var ticker: Job? = null
+
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish()
     }
@@ -57,6 +63,8 @@ class MediaControllerHolder @Inject constructor(
     }
 
     override fun release() {
+        ticker?.cancel()
+        ticker = null
         controller?.removeListener(listener)
         controller?.release()
         controller = null
@@ -77,8 +85,34 @@ class MediaControllerHolder @Inject constructor(
         scope.launch { controller?.let(block) }
     }
 
+    /**
+     * Keeps [PlayerState.positionMs] moving while a track plays.
+     *
+     * [Player.Listener.onEvents] fires on discrete changes — play, pause, item transition — and
+     * never as position advances, so a listener alone leaves the displayed time frozen until
+     * something else happens. Polling runs only while playing, and stops the moment it does not.
+     */
+    private fun syncTicker(isPlaying: Boolean) {
+        if (!isPlaying) {
+            ticker?.cancel()
+            ticker = null
+            return
+        }
+        if (ticker?.isActive == true) return
+        ticker = scope.launch {
+            while (isActive) {
+                delay(POSITION_POLL_MS)
+                val c = controller ?: break
+                _state.value = _state.value.copy(
+                    positionMs = c.currentPosition.coerceAtLeast(0L),
+                )
+            }
+        }
+    }
+
     private fun publish() {
         val c = controller ?: return
+        syncTicker(c.isPlaying)
         val metadata: MediaMetadata = c.mediaMetadata
         _state.value = playerStateOf(
             isPlaying = c.isPlaying,
@@ -90,3 +124,6 @@ class MediaControllerHolder @Inject constructor(
         )
     }
 }
+
+/** Fast enough that a seconds readout never looks stuck, cheap enough to ignore. */
+private const val POSITION_POLL_MS = 500L
