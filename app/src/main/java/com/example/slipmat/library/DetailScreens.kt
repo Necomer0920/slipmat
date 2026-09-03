@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.slipmat.core.data.db.TrackEntity
+import com.example.slipmat.core.media.QueueItem
 
 /** Every detail screen is the same shape: a title, a back arrow, and a list of tracks. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,7 +23,7 @@ private fun DetailScaffold(
     subtitle: String?,
     tracks: List<TrackEntity>,
     onBack: () -> Unit,
-    onPlay: (uris: List<String>, index: Int) -> Unit,
+    onPlay: (items: List<QueueItem>, index: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -51,7 +52,7 @@ private fun DetailScaffold(
         TrackList(
             tracks = tracks,
             // Playing from a detail screen queues *that* list, not the whole library.
-            onTrackClick = { index -> onPlay(tracks.map { it.uri }, index) },
+            onTrackClick = { index -> onPlay(tracks.map { it.toQueueItem() }, index) },
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -60,7 +61,7 @@ private fun DetailScaffold(
 @Composable
 fun ArtistDetailScreen(
     onBack: () -> Unit,
-    onPlay: (List<String>, Int) -> Unit,
+    onPlay: (List<QueueItem>, Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ArtistDetailViewModel = hiltViewModel(),
 ) {
@@ -78,7 +79,7 @@ fun ArtistDetailScreen(
 @Composable
 fun AlbumDetailScreen(
     onBack: () -> Unit,
-    onPlay: (List<String>, Int) -> Unit,
+    onPlay: (List<QueueItem>, Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AlbumDetailViewModel = hiltViewModel(),
 ) {
@@ -96,7 +97,7 @@ fun AlbumDetailScreen(
 @Composable
 fun FolderDetailScreen(
     onBack: () -> Unit,
-    onPlay: (List<String>, Int) -> Unit,
+    onPlay: (List<QueueItem>, Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FolderDetailViewModel = hiltViewModel(),
 ) {

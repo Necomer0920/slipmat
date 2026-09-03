@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.core.data.db.TrackEntity
+import com.example.slipmat.core.media.QueueItem
 import java.util.Locale
 
 /** The one track list. Every screen that shows tracks uses this, so rows stay identical. */
@@ -77,3 +78,14 @@ fun formatDuration(durationMs: Long): String {
         String.format(Locale.US, "%d:%02d", minutes, seconds)
     }
 }
+
+/**
+ * Carries the library's own metadata into the queue, so the notification and now-playing screen
+ * show the same cover the album grid does even when the file has no embedded artwork.
+ */
+fun TrackEntity.toQueueItem(): QueueItem = QueueItem(
+    uri = uri,
+    title = title,
+    artist = artist,
+    artworkUri = albumArtUri,
+)

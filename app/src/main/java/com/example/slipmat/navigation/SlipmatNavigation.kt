@@ -24,6 +24,7 @@ import com.example.slipmat.library.ArtistListScreen
 import com.example.slipmat.library.DetailArgs
 import com.example.slipmat.library.FolderDetailScreen
 import com.example.slipmat.library.FolderListScreen
+import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.library.LibraryScreen
 import com.example.slipmat.nowplaying.MiniPlayer
 import com.example.slipmat.nowplaying.NowPlayingScreen
@@ -55,7 +56,7 @@ private object Routes {
 
 @Composable
 fun SlipmatNavHost(
-    onPlay: (uris: List<String>, index: Int) -> Unit,
+    onPlay: (items: List<QueueItem>, index: Int) -> Unit,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {

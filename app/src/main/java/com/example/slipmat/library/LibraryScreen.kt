@@ -15,11 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.slipmat.core.media.QueueItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LibraryScreen(
-    onPlay: (uris: List<String>, index: Int) -> Unit,
+    onPlay: (items: List<QueueItem>, index: Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
@@ -31,7 +32,7 @@ fun LibraryScreen(
     LibraryContent(
         state = state,
         // The whole library becomes the queue, starting at the tapped row.
-        onTrackClick = { index -> onPlay(state.tracks.map { it.uri }, index) },
+        onTrackClick = { index -> onPlay(state.tracks.map { it.toQueueItem() }, index) },
         modifier = modifier,
     )
 }
