@@ -8,6 +8,14 @@ android {
     namespace = "com.example.slipmat.core.data"
 }
 
+/**
+ * Room writes the schema of every version to disk. Migration tests in Phases 5 and 7 need the
+ * previous version's JSON to migrate from, so this must be in place before version 1 ships.
+ */
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.room.runtime)
