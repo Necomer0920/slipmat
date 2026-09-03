@@ -2,6 +2,7 @@ package com.example.slipmat.core.media
 
 import android.content.ComponentName
 import android.content.Context
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -69,6 +70,17 @@ class MediaControllerHolder @Inject constructor(
         controller?.release()
         controller = null
         _state.value = PlayerState.EMPTY
+    }
+
+    override fun playQueue(uris: List<String>, startIndex: Int) = withController { controller ->
+        if (uris.isEmpty()) return@withController
+        controller.setMediaItems(
+            uris.map(MediaItem::fromUri),
+            startIndex.coerceIn(uris.indices),
+            0L,
+        )
+        controller.prepare()
+        controller.play()
     }
 
     override fun play() = withController { it.play() }

@@ -20,6 +20,14 @@ interface PlaybackController {
     /** Drops the binding. Playback continues in the service regardless. */
     fun release()
 
+    /**
+     * Replaces the queue and starts playing at [startIndex].
+     *
+     * Takes plain URI strings rather than `MediaItem`s so no Media3 type appears here. Media3
+     * reads each file's tags itself, so title and artist still reach the notification.
+     */
+    fun playQueue(uris: List<String>, startIndex: Int)
+
     fun play()
 
     fun pause()
