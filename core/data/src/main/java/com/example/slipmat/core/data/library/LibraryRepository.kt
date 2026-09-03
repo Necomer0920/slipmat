@@ -1,6 +1,10 @@
 package com.example.slipmat.core.data.library
 
 import android.provider.MediaStore
+import androidx.room.withTransaction
+import com.example.slipmat.core.data.db.SlipmatDatabase
+import com.example.slipmat.core.data.scan.ScanDiff
+import com.example.slipmat.core.data.scan.computeScanDiff
 import com.example.slipmat.core.data.db.TrackDao
 import com.example.slipmat.core.data.db.TrackEntity
 import com.example.slipmat.core.data.scan.MediaStoreScanner
@@ -20,6 +24,7 @@ import javax.inject.Singleton
 class LibraryRepository @Inject constructor(
     private val scanner: MediaStoreScanner,
     private val trackDao: TrackDao,
+    private val database: SlipmatDatabase,
 ) {
 
     fun observeTracks(): Flow<List<TrackEntity>> = trackDao.observeAllTracks()
@@ -36,7 +41,33 @@ class LibraryRepository @Inject constructor(
         entities.size
     }
 
+    /**
+     * Rescan, writing only what changed.
+     *
+     * The whole diff is applied in one transaction: a scan interrupted midway must not leave the
+     * library with deletions applied and insertions missing.
+     */
+    suspend fun scanIncremental(): ScanDiff = withContext(Dispatchers.IO) {
+        val scanned = scanner.queryAudio().mapNotNull { it.toEntityOrNull(CONTENT_URI_BASE) }
+        val diff = computeScanDiff(scanned, trackDao.getAllIdsWithDateModified())
+
+        if (!diff.isEmpty) {
+            database.withTransaction {
+                // SQLite caps host parameters per statement, and a large library blows past it,
+                // so deletions go in batches rather than one enormous IN clause.
+                diff.deletedIds.chunked(SQLITE_VARIABLE_LIMIT).forEach { trackDao.deleteByIds(it) }
+                (diff.inserted + diff.updated)
+                    .chunked(SQLITE_VARIABLE_LIMIT)
+                    .forEach { trackDao.upsertAll(it) }
+            }
+        }
+        diff
+    }
+
     private companion object {
         val CONTENT_URI_BASE: String = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI.toString()
+
+        /** SQLite's default `SQLITE_MAX_VARIABLE_NUMBER` is 999; stay comfortably under it. */
+        const val SQLITE_VARIABLE_LIMIT = 900
     }
 }
