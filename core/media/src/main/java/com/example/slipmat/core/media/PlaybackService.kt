@@ -1,5 +1,6 @@
 package com.example.slipmat.core.media
 
+import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -24,6 +25,14 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         mediaSession = MediaSession.Builder(this, player).build()
+
+        // TEMPORARY (Phase 1 only): proves the service, session and notification work end to end
+        // before there is any library to play from. Push a file with
+        //   adb push <some.mp3> /sdcard/Music/test.mp3
+        // Replaced in Phase 3, when the UI sets the queue through the controller.
+        player.setMediaItem(MediaItem.fromUri(TEMPORARY_TEST_MEDIA))
+        player.prepare()
+        player.play()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -47,3 +56,5 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 }
+
+private const val TEMPORARY_TEST_MEDIA = "file:///sdcard/Music/test.mp3"
