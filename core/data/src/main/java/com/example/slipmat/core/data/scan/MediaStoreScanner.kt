@@ -33,6 +33,11 @@ class MediaStoreScanner @Inject constructor(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 add(MediaStore.Audio.Media.RELATIVE_PATH)
             }
+            // ALBUM_ARTIST arrived in API 30. Asking an older provider for a column it does not
+            // have makes query() throw, so it is gated rather than merely index-checked.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                add(MediaStore.Audio.Media.ALBUM_ARTIST)
+            }
         }.toTypedArray()
 
         // IS_MUSIC excludes ringtones, alarms and notification sounds, which are indexed here too.
@@ -62,6 +67,11 @@ class MediaStoreScanner @Inject constructor(
             } else {
                 -1
             }
+            val albumArtist = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                c.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST)
+            } else {
+                -1
+            }
 
             buildList(c.count) {
                 while (c.moveToNext()) {
@@ -70,7 +80,7 @@ class MediaStoreScanner @Inject constructor(
                             id = if (id >= 0) c.getLong(id) else continue,
                             title = title.takeIf { it >= 0 }?.let(c::getStringOrNull),
                             artist = artist.takeIf { it >= 0 }?.let(c::getStringOrNull),
-                            albumArtist = null,
+                            albumArtist = albumArtist.takeIf { it >= 0 }?.let(c::getStringOrNull),
                             album = album.takeIf { it >= 0 }?.let(c::getStringOrNull),
                             albumId = if (albumId >= 0) c.getLong(albumId) else 0L,
                             durationMs = if (duration >= 0) c.getLong(duration) else 0L,

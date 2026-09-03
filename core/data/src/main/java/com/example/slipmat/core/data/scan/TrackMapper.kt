@@ -29,7 +29,8 @@ fun RawTrack.toEntityOrNull(contentUriBase: String): TrackEntity? {
         id = id,
         title = title.cleanTag() ?: displayName.withoutExtension() ?: UNKNOWN_TITLE,
         artist = cleanArtist,
-        albumArtist = cleanArtist,
+        // Grouping albums by artist shatters a compilation into one-track albums.
+        albumArtist = albumArtist.cleanTag() ?: cleanArtist,
         album = album.cleanTag() ?: UNKNOWN_ALBUM,
         albumId = albumId,
         durationMs = durationMs,
