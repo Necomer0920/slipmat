@@ -1,5 +1,6 @@
 package com.example.slipmat.core.media
 
+import android.app.PendingIntent
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -24,7 +25,9 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        mediaSession = MediaSession.Builder(this, player).build()
+        mediaSession = MediaSession.Builder(this, player)
+            .apply { launchIntent()?.let(::setSessionActivity) }
+            .build()
 
         // TEMPORARY (Phase 1 only): proves the service, session and notification work end to end
         // before there is any library to play from. Push a file with
@@ -37,6 +40,23 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
+
+    /**
+     * What the media notification and lock-screen card open when tapped.
+     *
+     * Resolved through the package manager rather than by naming `MainActivity`: `:app` depends on
+     * `:core:media`, never the reverse, so this module cannot reference the Activity class.
+     * Without it the notification posts with `contentIntent=null` and tapping it does nothing.
+     */
+    private fun launchIntent(): PendingIntent? =
+        packageManager.getLaunchIntentForPackage(packageName)?.let { intent ->
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        }
 
     /**
      * Media3 1.6+ keeps the foreground service alive for ten minutes after playback stops, so
