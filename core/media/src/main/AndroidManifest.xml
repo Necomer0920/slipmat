@@ -4,4 +4,22 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <application>
+
+        <!--
+          API 34+ enforces foregroundServiceType strictly: without mediaPlayback the service is
+          killed on start. exported=true is required so external controllers (Bluetooth, Android
+          Auto, the system media panel) can bind to the session.
+        -->
+        <service
+            android:name=".PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+    </application>
+
 </manifest>
