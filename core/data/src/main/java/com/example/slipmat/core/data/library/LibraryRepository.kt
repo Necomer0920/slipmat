@@ -7,7 +7,7 @@ import com.example.slipmat.core.data.scan.ScanDiff
 import com.example.slipmat.core.data.scan.computeScanDiff
 import com.example.slipmat.core.data.db.TrackDao
 import com.example.slipmat.core.data.db.TrackEntity
-import com.example.slipmat.core.data.scan.MediaStoreScanner
+import com.example.slipmat.core.data.scan.AudioSource
 import com.example.slipmat.core.data.scan.toEntityOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -21,11 +21,11 @@ import javax.inject.Singleton
 /**
  * Owns the local library index: reads MediaStore, keeps Room in step, and exposes the result.
  *
- * The UI never touches [MediaStoreScanner] or [TrackDao] directly.
+ * The UI never touches [AudioSource] or [TrackDao] directly.
  */
 @Singleton
 class LibraryRepository @Inject constructor(
-    private val scanner: MediaStoreScanner,
+    private val scanner: AudioSource,
     private val trackDao: TrackDao,
     private val database: SlipmatDatabase,
 ) {

@@ -1,0 +1,16 @@
+package com.example.slipmat.core.data.di
+
+import com.example.slipmat.core.data.scan.AudioSource
+import com.example.slipmat.core.data.scan.MediaStoreScanner
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ScanModule {
+
+    @Binds
+    abstract fun bindAudioSource(impl: MediaStoreScanner): AudioSource
+}

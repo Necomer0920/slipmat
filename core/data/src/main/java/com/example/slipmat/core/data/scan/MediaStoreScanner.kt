@@ -16,9 +16,9 @@ import javax.inject.Inject
  */
 class MediaStoreScanner @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : AudioSource {
 
-    fun queryAudio(): List<RawTrack> {
+    override fun queryAudio(): List<RawTrack> {
         val projection = buildList {
             add(MediaStore.Audio.Media._ID)
             add(MediaStore.Audio.Media.TITLE)
