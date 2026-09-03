@@ -19,7 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LibraryScreen(
-    onTrackClick: (index: Int) -> Unit,
+    onPlay: (uris: List<String>, index: Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
@@ -28,7 +28,12 @@ fun LibraryScreen(
     // Rescan on entry. Incremental, so an unchanged library writes nothing.
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    LibraryContent(state = state, onTrackClick = onTrackClick, modifier = modifier)
+    LibraryContent(
+        state = state,
+        // The whole library becomes the queue, starting at the tapped row.
+        onTrackClick = { index -> onPlay(state.tracks.map { it.uri }, index) },
+        modifier = modifier,
+    )
 }
 
 @Composable

@@ -22,9 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Row
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.slipmat.core.media.PlaybackController
-import com.example.slipmat.library.LibraryScreen
-import com.example.slipmat.library.LibraryViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.slipmat.navigation.SlipmatNavHost
 import com.example.slipmat.permission.AudioPermissionGate
 import com.example.slipmat.ui.theme.SlipmatTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -48,17 +46,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AudioPermissionGate(modifier = Modifier.padding(innerPadding)) {
                         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                            val libraryViewModel: LibraryViewModel = hiltViewModel()
-                            val library by libraryViewModel.uiState.collectAsStateWithLifecycle()
-
-                            LibraryScreen(
-                                onTrackClick = { index ->
-                                    playback.playQueue(
-                                        uris = library.tracks.map { it.uri },
-                                        startIndex = index,
-                                    )
-                                },
-                                viewModel = libraryViewModel,
+                            SlipmatNavHost(
+                                onPlay = playback::playQueue,
                                 modifier = Modifier.weight(1f),
                             )
                             HorizontalDivider()
