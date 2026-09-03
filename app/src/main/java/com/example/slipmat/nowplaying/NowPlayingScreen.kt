@@ -10,7 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -40,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
+import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.library.formatDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,7 +62,7 @@ fun NowPlayingScreen(
             title = { Text("Now playing") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Text(text = "\u2193", style = MaterialTheme.typography.titleLarge)
+                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close")
                 }
             },
         )
@@ -86,6 +92,7 @@ fun NowPlayingScreen(
 
             SeekBar(state = state, onSeek = viewModel::seekTo)
             TransportControls(state = state, viewModel = viewModel)
+            ModeControls(state = state, viewModel = viewModel)
         }
     }
 }
@@ -159,6 +166,12 @@ private fun TransportControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TransportButton(
+            icon = Icons.Filled.Replay10,
+            description = "Back 10 seconds",
+            onClick = viewModel::skipBack,
+            enabled = state.hasMedia,
+        )
+        TransportButton(
             icon = Icons.Filled.SkipPrevious,
             description = "Previous track",
             onClick = viewModel::previous,
@@ -176,6 +189,57 @@ private fun TransportControls(
             onClick = viewModel::next,
             enabled = state.hasMedia,
         )
+        TransportButton(
+            icon = Icons.Filled.Forward10,
+            description = "Forward 10 seconds",
+            onClick = viewModel::skipForward,
+            enabled = state.hasMedia,
+        )
+    }
+}
+
+/**
+ * Shuffle and repeat sit apart from the transport row: they change how the queue behaves rather
+ * than moving through it, and mixing them in makes the primary controls harder to hit.
+ */
+@Composable
+private fun ModeControls(
+    state: PlayerState,
+    viewModel: NowPlayingViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val active = MaterialTheme.colorScheme.primary
+    val inactive = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = viewModel::toggleShuffle) {
+            Icon(
+                imageVector = Icons.Filled.Shuffle,
+                contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+                tint = if (state.shuffleEnabled) active else inactive,
+            )
+        }
+        IconButton(onClick = viewModel::cycleRepeatMode) {
+            Icon(
+                // RepeatOne carries its own "1" badge, so the three states stay distinguishable
+                // by shape as well as by colour.
+                imageVector = if (state.repeatMode == RepeatMode.One) {
+                    Icons.Filled.RepeatOne
+                } else {
+                    Icons.Filled.Repeat
+                },
+                contentDescription = when (state.repeatMode) {
+                    RepeatMode.Off -> "Repeat off"
+                    RepeatMode.All -> "Repeat all"
+                    RepeatMode.One -> "Repeat one"
+                },
+                tint = if (state.repeatMode == RepeatMode.Off) inactive else active,
+            )
+        }
     }
 }
 

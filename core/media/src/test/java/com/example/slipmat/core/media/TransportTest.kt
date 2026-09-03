@@ -8,12 +8,12 @@ class SkipSeekTest {
 
     @Test
     fun `a skip forward mid-track simply advances`() {
-        assertEquals(45_000L, skipSeekTarget(currentMs = 30_000, durationMs = 200_000, deltaMs = SKIP_SEEK_MS))
+        assertEquals(40_000L, skipSeekTarget(currentMs = 30_000, durationMs = 200_000, deltaMs = SKIP_SEEK_MS))
     }
 
     @Test
     fun `a skip back mid-track simply rewinds`() {
-        assertEquals(15_000L, skipSeekTarget(currentMs = 30_000, durationMs = 200_000, deltaMs = -SKIP_SEEK_MS))
+        assertEquals(20_000L, skipSeekTarget(currentMs = 30_000, durationMs = 200_000, deltaMs = -SKIP_SEEK_MS))
     }
 
     @Test
@@ -30,7 +30,7 @@ class SkipSeekTest {
     @Test
     fun `with an unknown duration only the lower bound can be enforced`() {
         // Media3 reports a non-positive duration until a track is prepared.
-        assertEquals(45_000L, skipSeekTarget(currentMs = 30_000, durationMs = 0, deltaMs = SKIP_SEEK_MS))
+        assertEquals(40_000L, skipSeekTarget(currentMs = 30_000, durationMs = 0, deltaMs = SKIP_SEEK_MS))
         assertEquals(0L, skipSeekTarget(currentMs = 5_000, durationMs = -1, deltaMs = -SKIP_SEEK_MS))
     }
 

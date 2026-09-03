@@ -3,6 +3,7 @@ package com.example.slipmat.nowplaying
 import androidx.lifecycle.ViewModel
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.PlayerState
+import com.example.slipmat.core.media.RepeatMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -29,4 +30,13 @@ class NowPlayingViewModel @Inject constructor(
     fun previous() = playback.previous()
 
     fun seekTo(positionMs: Long) = playback.seekTo(positionMs)
+
+    fun skipForward() = playback.skipForward()
+
+    fun skipBack() = playback.skipBack()
+
+    fun toggleShuffle() = playback.setShuffle(!state.value.shuffleEnabled)
+
+    /** One button, three states: off → all → one → off. */
+    fun cycleRepeatMode() = playback.setRepeatMode(state.value.repeatMode.next())
 }

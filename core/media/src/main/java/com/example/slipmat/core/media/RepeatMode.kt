@@ -21,8 +21,14 @@ enum class RepeatMode {
     }
 }
 
-/** How far the skip-seek buttons jump. */
-const val SKIP_SEEK_MS = 15_000L
+/**
+ * How far the skip-seek buttons jump.
+ *
+ * Ten rather than fifteen seconds so the buttons can carry Material's `Replay10` / `Forward10`
+ * icons, which state the interval on their face. There is no 15-second icon, and a button
+ * labelled "10" that jumps 15 is worse than either honest choice.
+ */
+const val SKIP_SEEK_MS = 10_000L
 
 /**
  * Where a skip-seek should land.
