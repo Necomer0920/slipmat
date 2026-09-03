@@ -1,12 +1,11 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+
+# Android Studio rewrites these constantly and they are specific to one machine —
+# which device you last deployed to, local inspection profiles, SDK paths. Keeping
+# them out means a diff only ever shows real changes.
+/.idea/
 .DS_Store
 /build
 /captures
