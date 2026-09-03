@@ -1,0 +1,10 @@
+# Normalize all text files to LF in the repository.
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF or cmd.exe mis-parses them.
+*.bat text eol=crlf
+
+# Binaries git should never touch.
+*.jar binary
+*.webp binary
+*.png binary
