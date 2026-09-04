@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.IconButton
@@ -208,36 +209,60 @@ private fun ModeControls(
     viewModel: NowPlayingViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val active = MaterialTheme.colorScheme.primary
-    val inactive = MaterialTheme.colorScheme.onSurfaceVariant
-
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = viewModel::toggleShuffle) {
-            Icon(
-                imageVector = Icons.Filled.Shuffle,
-                contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
-                tint = if (state.shuffleEnabled) active else inactive,
-            )
+        ModeToggle(
+            active = state.shuffleEnabled,
+            icon = Icons.Filled.Shuffle,
+            description = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+            onClick = viewModel::toggleShuffle,
+        )
+        ModeToggle(
+            active = state.repeatMode != RepeatMode.Off,
+            // RepeatOne carries its own "1" badge, so all three states differ in shape as well
+            // as in background.
+            icon = if (state.repeatMode == RepeatMode.One) {
+                Icons.Filled.RepeatOne
+            } else {
+                Icons.Filled.Repeat
+            },
+            description = when (state.repeatMode) {
+                RepeatMode.Off -> "Repeat off"
+                RepeatMode.All -> "Repeat all"
+                RepeatMode.One -> "Repeat one"
+            },
+            onClick = viewModel::cycleRepeatMode,
+        )
+    }
+}
+
+/**
+ * A toggle whose on-state is a filled background, not a tint.
+ *
+ * Tinting alone was measured at roughly a 12/255 difference on one channel against the inactive
+ * grey — invisible at a glance, and worse for anyone with reduced colour vision. The filled shape
+ * reads instantly and does not depend on hue.
+ */
+@Composable
+private fun ModeToggle(
+    active: Boolean,
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    if (active) {
+        FilledTonalIconButton(onClick = onClick) {
+            Icon(imageVector = icon, contentDescription = description)
         }
-        IconButton(onClick = viewModel::cycleRepeatMode) {
+    } else {
+        IconButton(onClick = onClick) {
             Icon(
-                // RepeatOne carries its own "1" badge, so the three states stay distinguishable
-                // by shape as well as by colour.
-                imageVector = if (state.repeatMode == RepeatMode.One) {
-                    Icons.Filled.RepeatOne
-                } else {
-                    Icons.Filled.Repeat
-                },
-                contentDescription = when (state.repeatMode) {
-                    RepeatMode.Off -> "Repeat off"
-                    RepeatMode.All -> "Repeat all"
-                    RepeatMode.One -> "Repeat one"
-                },
-                tint = if (state.repeatMode == RepeatMode.Off) inactive else active,
+                imageVector = icon,
+                contentDescription = description,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
