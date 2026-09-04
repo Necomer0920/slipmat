@@ -61,19 +61,16 @@ class PositionKeeper(
 
     private fun save() {
         val uri = player.currentMediaItem?.localConfiguration?.uri?.toString() ?: return
-        val position = player.currentPosition
-        val duration = player.duration
+        val action = positionSaveAction(player.currentPosition, player.duration)
 
         scope.launch {
-            // Near the end means "finished". Storing that would make the track restart at its last
-            // second next time, which is worse than starting over.
-            if (duration > 0 && position > duration - FINISHED_THRESHOLD_MS) {
-                dao.clear(uri)
-            } else if (position > MIN_SAVE_MS) {
-                dao.upsert(
+            when (action) {
+                PositionSaveAction.Ignore -> Unit
+                PositionSaveAction.Clear -> dao.clear(uri)
+                is PositionSaveAction.Save -> dao.upsert(
                     PlaybackPositionEntity(
                         mediaUri = uri,
-                        positionMs = position,
+                        positionMs = action.positionMs,
                         updatedAt = System.currentTimeMillis(),
                     ),
                 )
@@ -83,10 +80,31 @@ class PositionKeeper(
 
     private companion object {
         const val SAVE_INTERVAL_MS = 5_000L
-
-        /** Below this, resuming is more annoying than restarting. */
-        const val MIN_SAVE_MS = 5_000L
-
-        const val FINISHED_THRESHOLD_MS = 5_000L
     }
+}
+
+/** What to do with a position, decided separately from the player so the rules can be tested. */
+sealed interface PositionSaveAction {
+    data class Save(val positionMs: Long) : PositionSaveAction
+    data object Clear : PositionSaveAction
+    data object Ignore : PositionSaveAction
+}
+
+/** Below this, resuming is more annoying than starting the track over. */
+const val MIN_RESUME_MS = 5_000L
+
+/** Within this of the end, a track counts as finished. */
+const val FINISHED_THRESHOLD_MS = 5_000L
+
+/**
+ * Decides whether a position is worth remembering.
+ *
+ * Storing a position near the end would make the track resume at its final second next time, which
+ * is worse than restarting it — so that case clears the stored position instead.
+ */
+fun positionSaveAction(positionMs: Long, durationMs: Long): PositionSaveAction = when {
+    positionMs < 0L -> PositionSaveAction.Ignore
+    durationMs > 0L && positionMs > durationMs - FINISHED_THRESHOLD_MS -> PositionSaveAction.Clear
+    positionMs > MIN_RESUME_MS -> PositionSaveAction.Save(positionMs)
+    else -> PositionSaveAction.Ignore
 }
