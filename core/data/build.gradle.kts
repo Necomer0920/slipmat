@@ -6,6 +6,12 @@ plugins {
 
 android {
     namespace = "com.example.slipmat.core.data"
+
+    // MigrationTestHelper reads the exported schemas at runtime, so they have to ship inside the
+    // androidTest APK as assets. Without this the test fails with "Cannot find the schema file".
+    sourceSets.getByName("androidTest") {
+        assets.srcDir(files("$projectDir/schemas"))
+    }
 }
 
 /**
