@@ -3,6 +3,7 @@ package com.example.slipmat.core.data.di
 import android.content.Context
 import androidx.room.Room
 import com.example.slipmat.core.data.db.SlipmatDatabase
+import com.example.slipmat.core.data.db.PlaybackPositionDao
 import com.example.slipmat.core.data.db.TrackDao
 import dagger.Module
 import dagger.Provides
@@ -23,4 +24,8 @@ object DatabaseModule {
 
     @Provides
     fun provideTrackDao(database: SlipmatDatabase): TrackDao = database.trackDao()
+
+    @Provides
+    fun providePlaybackPositionDao(database: SlipmatDatabase): PlaybackPositionDao =
+        database.playbackPositionDao()
 }
