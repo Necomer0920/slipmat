@@ -50,9 +50,30 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.RepeatMode
+import com.example.slipmat.core.media.SleepTimerState
 import com.example.slipmat.library.formatDuration
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Everything the now-playing screen can do, gathered so the body stays stateless.
+ *
+ * A stateless body is what makes preview screenshots possible at all — a composable that reaches
+ * for a `hiltViewModel()` cannot be rendered off-device.
+ */
+data class NowPlayingActions(
+    val onBack: () -> Unit = {},
+    val onOpenQueue: () -> Unit = {},
+    val onPlayPause: () -> Unit = {},
+    val onNext: () -> Unit = {},
+    val onPrevious: () -> Unit = {},
+    val onSkipForward: () -> Unit = {},
+    val onSkipBack: () -> Unit = {},
+    val onSeek: (Long) -> Unit = {},
+    val onToggleShuffle: () -> Unit = {},
+    val onCycleRepeat: () -> Unit = {},
+    val onStartSleepTimer: (Int) -> Unit = {},
+    val onCancelSleepTimer: () -> Unit = {},
+)
+
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
@@ -63,16 +84,45 @@ fun NowPlayingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
 
+    NowPlayingContent(
+        state = state,
+        sleepTimer = sleepTimer,
+        actions = NowPlayingActions(
+            onBack = onBack,
+            onOpenQueue = onOpenQueue,
+            onPlayPause = viewModel::togglePlayPause,
+            onNext = viewModel::next,
+            onPrevious = viewModel::previous,
+            onSkipForward = viewModel::skipForward,
+            onSkipBack = viewModel::skipBack,
+            onSeek = viewModel::seekTo,
+            onToggleShuffle = viewModel::toggleShuffle,
+            onCycleRepeat = viewModel::cycleRepeatMode,
+            onStartSleepTimer = viewModel::startSleepTimer,
+            onCancelSleepTimer = viewModel::cancelSleepTimer,
+        ),
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun NowPlayingContent(
+    state: PlayerState,
+    sleepTimer: SleepTimerState,
+    actions: NowPlayingActions,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("Now playing") },
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(onClick = actions.onBack) {
                     Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close")
                 }
             },
             actions = {
-                IconButton(onClick = onOpenQueue) {
+                IconButton(onClick = actions.onOpenQueue) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                 }
             },
@@ -106,13 +156,13 @@ fun NowPlayingScreen(
                 overflow = TextOverflow.Ellipsis,
             )
 
-            SeekBar(state = state, onSeek = viewModel::seekTo)
-            TransportControls(state = state, viewModel = viewModel)
-            ModeControls(state = state, viewModel = viewModel)
+            SeekBar(state = state, onSeek = actions.onSeek)
+            TransportControls(state = state, actions = actions)
+            ModeControls(state = state, actions = actions)
             SleepTimerControls(
                 state = sleepTimer,
-                onStart = viewModel::startSleepTimer,
-                onCancel = viewModel::cancelSleepTimer,
+                onStart = actions.onStartSleepTimer,
+                onCancel = actions.onCancelSleepTimer,
             )
         }
     }
@@ -178,7 +228,7 @@ private fun SeekBar(state: PlayerState, onSeek: (Long) -> Unit, modifier: Modifi
 @Composable
 private fun TransportControls(
     state: PlayerState,
-    viewModel: NowPlayingViewModel,
+    actions: NowPlayingActions,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -189,31 +239,31 @@ private fun TransportControls(
         TransportButton(
             icon = Icons.Filled.Replay10,
             description = "Back 10 seconds",
-            onClick = viewModel::skipBack,
+            onClick = actions.onSkipBack,
             enabled = state.hasMedia,
         )
         TransportButton(
             icon = Icons.Filled.SkipPrevious,
             description = "Previous track",
-            onClick = viewModel::previous,
+            onClick = actions.onPrevious,
             enabled = state.hasMedia,
         )
         TransportButton(
             icon = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
             description = if (state.isPlaying) "Pause" else "Play",
-            onClick = viewModel::togglePlayPause,
+            onClick = actions.onPlayPause,
             enabled = state.hasMedia,
         )
         TransportButton(
             icon = Icons.Filled.SkipNext,
             description = "Next track",
-            onClick = viewModel::next,
+            onClick = actions.onNext,
             enabled = state.hasMedia,
         )
         TransportButton(
             icon = Icons.Filled.Forward10,
             description = "Forward 10 seconds",
-            onClick = viewModel::skipForward,
+            onClick = actions.onSkipForward,
             enabled = state.hasMedia,
         )
     }
@@ -226,7 +276,7 @@ private fun TransportControls(
 @Composable
 private fun ModeControls(
     state: PlayerState,
-    viewModel: NowPlayingViewModel,
+    actions: NowPlayingActions,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -238,7 +288,7 @@ private fun ModeControls(
             active = state.shuffleEnabled,
             icon = Icons.Filled.Shuffle,
             description = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
-            onClick = viewModel::toggleShuffle,
+            onClick = actions.onToggleShuffle,
         )
         ModeToggle(
             active = state.repeatMode != RepeatMode.Off,
@@ -254,7 +304,7 @@ private fun ModeControls(
                 RepeatMode.All -> "Repeat all"
                 RepeatMode.One -> "Repeat one"
             },
-            onClick = viewModel::cycleRepeatMode,
+            onClick = actions.onCycleRepeat,
         )
     }
 }

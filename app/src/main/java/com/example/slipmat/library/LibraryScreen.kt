@@ -38,7 +38,7 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun LibraryContent(
+internal fun LibraryContent(
     state: LibraryUiState,
     onTrackClick: (index: Int) -> Unit,
     modifier: Modifier = Modifier,
