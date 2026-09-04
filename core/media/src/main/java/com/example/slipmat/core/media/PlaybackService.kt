@@ -1,7 +1,13 @@
 package com.example.slipmat.core.media
 
 import android.app.PendingIntent
+import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.slipmat.core.data.db.PlaybackPositionDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,6 +26,12 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var player: ExoPlayer
 
+    @Inject
+    lateinit var playbackPositions: PlaybackPositionDao
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var positionKeeper: PositionKeeper? = null
+
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
@@ -27,6 +39,9 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .apply { launchIntent()?.let(::setSessionActivity) }
             .build()
+
+        positionKeeper = PositionKeeper(player, playbackPositions, serviceScope).also { it.start() }
+        restoreLastSession()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -58,7 +73,28 @@ class PlaybackService : MediaSessionService() {
         pauseAllPlayersAndStopSelf()
     }
 
+    /**
+     * Puts the last-played track back after a cold start, paused and at its saved position.
+     *
+     * Only runs when the player is empty, so it never disturbs a live queue. The queue itself is
+     * not persisted — restoring the track the user was on is what "surviving process death" means
+     * here, and rebuilding a 2,600-item queue on every launch would not be.
+     */
+    private fun restoreLastSession() {
+        if (player.mediaItemCount > 0) return
+        serviceScope.launch {
+            val last = playbackPositions.mostRecent() ?: return@launch
+            if (player.mediaItemCount > 0) return@launch
+            player.setMediaItem(MediaItem.fromUri(last.mediaUri))
+            player.prepare()
+            player.seekTo(last.positionMs)
+            // Deliberately not play(): waking to unexpected audio is worse than a tap.
+        }
+    }
+
     override fun onDestroy() {
+        positionKeeper?.stop()
+        positionKeeper = null
         mediaSession?.run {
             player.release()
             release()

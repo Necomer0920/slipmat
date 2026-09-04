@@ -9,6 +9,10 @@ android {
 }
 
 dependencies {
+    // Resume-position persistence. The dependency runs media -> data, never the reverse: :core:data
+    // knows nothing about playback.
+    implementation(project(":core:data"))
+
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
