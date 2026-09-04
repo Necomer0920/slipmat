@@ -6,6 +6,10 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.util.UnstableApi
+import com.example.slipmat.core.media.dsp.AudioEffects
+import com.example.slipmat.core.media.dsp.FilterMode
+import com.example.slipmat.core.media.dsp.FilterState
 import androidx.media3.common.Player
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.session.MediaController
@@ -34,11 +38,32 @@ import javax.inject.Singleton
  *
  * All controller access happens on the main thread, which Media3 requires.
  */
+@OptIn(UnstableApi::class)
 @Singleton
 class MediaControllerHolder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sleepTimer: SleepTimer,
+    private val effects: AudioEffects,
 ) : PlaybackController {
+
+    private val _filterState = MutableStateFlow(FilterState())
+    override val filterState: StateFlow<FilterState> =
+        _filterState.asStateFlow()
+
+    override fun setFilterEnabled(enabled: Boolean) {
+        effects.filter.setEnabled(enabled)
+        _filterState.value = _filterState.value.copy(enabled = enabled)
+    }
+
+    override fun setFilterCutoff(hz: Float) {
+        effects.filter.setCutoff(hz)
+        _filterState.value = _filterState.value.copy(cutoffHz = hz)
+    }
+
+    override fun setFilterMode(mode: FilterMode) {
+        effects.filter.setMode(mode)
+        _filterState.value = _filterState.value.copy(mode = mode)
+    }
 
     override val sleepTimerState: StateFlow<SleepTimerState> = sleepTimer.state
 

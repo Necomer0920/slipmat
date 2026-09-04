@@ -1,5 +1,7 @@
 package com.example.slipmat.core.media
 
+import com.example.slipmat.core.media.dsp.FilterMode
+import com.example.slipmat.core.media.dsp.FilterState
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -63,4 +65,13 @@ interface PlaybackController {
      * in one tested place — see [speedPitchFor].
      */
     fun setSpeedPitch(speedPitch: SpeedPitch)
+
+    /** Filter state, mirrored for the UI. `FilterMode` is our own enum, not a Media3 type. */
+    val filterState: StateFlow<FilterState>
+
+    fun setFilterEnabled(enabled: Boolean)
+
+    fun setFilterCutoff(hz: Float)
+
+    fun setFilterMode(mode: FilterMode)
 }

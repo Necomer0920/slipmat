@@ -99,3 +99,49 @@ class BiquadResponseTest {
         }
     }
 }
+
+/**
+ * The cutoff slider is logarithmic because hearing is. On a linear slider the top octave eats most
+ * of the travel and the entire bass region crosses in a few pixels.
+ */
+class CutoffScaleTest {
+
+    @Test
+    fun `the slider ends map to the filter limits`() {
+        assertEquals(FILTER_MIN_HZ, sliderToFrequency(0f), 0.1f)
+        assertEquals(FILTER_MAX_HZ, sliderToFrequency(1f), 1f)
+    }
+
+    @Test
+    fun `the midpoint is the geometric mean, not the arithmetic one`() {
+        // Arithmetic would put the midpoint near 10 kHz, wasting the whole lower half of the sweep.
+        val middle = sliderToFrequency(0.5f)
+
+        assertEquals(775f, middle, 25f)
+    }
+
+    @Test
+    fun `equal slider steps are equal musical intervals`() {
+        val a = sliderToFrequency(0.2f)
+        val b = sliderToFrequency(0.4f)
+        val c = sliderToFrequency(0.6f)
+
+        // Constant ratio between steps is what "logarithmic" has to mean in practice.
+        assertEquals(b / a, c / b, 0.01f)
+    }
+
+    @Test
+    fun `converting to a slider position and back is lossless`() {
+        for (hz in listOf(30f, 120f, 440f, 2_000f, 12_000f, 20_000f)) {
+            assertEquals(hz, sliderToFrequency(frequencyToSlider(hz)), hz * 0.001f)
+        }
+    }
+
+    @Test
+    fun `out-of-range values are clamped rather than producing nonsense`() {
+        assertEquals(FILTER_MIN_HZ, sliderToFrequency(-1f), 0.1f)
+        assertEquals(FILTER_MAX_HZ, sliderToFrequency(2f), 1f)
+        assertEquals(0f, frequencyToSlider(1f), 0.001f)
+        assertEquals(1f, frequencyToSlider(50_000f), 0.001f)
+    }
+}

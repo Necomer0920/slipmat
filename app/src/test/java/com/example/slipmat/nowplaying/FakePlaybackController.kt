@@ -5,6 +5,8 @@ import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SpeedPitch
+import com.example.slipmat.core.media.dsp.FilterMode
+import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.SleepTimerState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +24,9 @@ class FakePlaybackController : PlaybackController {
 
     private val _sleepTimerState = MutableStateFlow<SleepTimerState>(SleepTimerState.Idle)
     override val sleepTimerState: StateFlow<SleepTimerState> = _sleepTimerState
+
+    private val _filterState = MutableStateFlow(FilterState())
+    override val filterState: StateFlow<FilterState> = _filterState
 
     val calls = mutableListOf<String>()
 
@@ -44,6 +49,9 @@ class FakePlaybackController : PlaybackController {
     override fun startSleepTimer(durationMs: Long) { calls += "startSleepTimer($durationMs)" }
     override fun cancelSleepTimer() { calls += "cancelSleepTimer" }
     override fun setSpeedPitch(speedPitch: SpeedPitch) { calls += "speed=${speedPitch.speed},pitch=${speedPitch.pitch}" }
+    override fun setFilterEnabled(enabled: Boolean) { calls += "filterEnabled($enabled)"; _filterState.value = _filterState.value.copy(enabled = enabled) }
+    override fun setFilterCutoff(hz: Float) { calls += "cutoff($hz)"; _filterState.value = _filterState.value.copy(cutoffHz = hz) }
+    override fun setFilterMode(mode: FilterMode) { calls += "filterMode($mode)"; _filterState.value = _filterState.value.copy(mode = mode) }
 }
 
 /** In-memory settings, so the view model can be tested without a Context or DataStore. */
