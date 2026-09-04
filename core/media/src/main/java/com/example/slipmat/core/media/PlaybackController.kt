@@ -55,4 +55,12 @@ interface PlaybackController {
     fun startSleepTimer(durationMs: Long)
 
     fun cancelSleepTimer()
+
+    /**
+     * Sets tempo and key together.
+     *
+     * Both are supplied rather than derived here so the decision about what key lock *means* stays
+     * in one tested place — see [speedPitchFor].
+     */
+    fun setSpeedPitch(speedPitch: SpeedPitch)
 }

@@ -22,6 +22,10 @@ data class PlayerState(
     val queue: List<QueueItem> = emptyList(),
     /** Index of the playing item within [queue], or `-1` when nothing is queued. */
     val queueIndex: Int = -1,
+    /** Playback speed multiplier as the player reports it; 1f is normal. */
+    val speed: Float = 1f,
+    /** Pitch multiplier as the player reports it; 1f is normal. */
+    val pitch: Float = 1f,
 ) {
     val hasMedia: Boolean get() = mediaId != null
 
@@ -55,6 +59,8 @@ fun playerStateOf(
     repeatMode: RepeatMode = RepeatMode.Off,
     queue: List<QueueItem> = emptyList(),
     queueIndex: Int = -1,
+    speed: Float = 1f,
+    pitch: Float = 1f,
 ): PlayerState {
     val duration = if (rawDurationMs > 0L) rawDurationMs else 0L
     val position = when {
@@ -74,5 +80,7 @@ fun playerStateOf(
         repeatMode = repeatMode,
         queue = queue,
         queueIndex = queueIndex,
+        speed = speed,
+        pitch = pitch,
     )
 }

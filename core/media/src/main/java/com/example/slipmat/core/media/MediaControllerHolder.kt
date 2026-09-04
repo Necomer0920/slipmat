@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -43,6 +44,10 @@ class MediaControllerHolder @Inject constructor(
     override fun startSleepTimer(durationMs: Long) = sleepTimer.start(durationMs)
 
     override fun cancelSleepTimer() = sleepTimer.cancel()
+
+    override fun setSpeedPitch(speedPitch: SpeedPitch) = withController {
+        it.playbackParameters = PlaybackParameters(speedPitch.speed, speedPitch.pitch)
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -181,6 +186,8 @@ class MediaControllerHolder @Inject constructor(
             repeatMode = c.repeatMode.toRepeatMode(),
             queue = c.readQueue(),
             queueIndex = c.currentMediaItemIndex,
+            speed = c.playbackParameters.speed,
+            pitch = c.playbackParameters.pitch,
         )
     }
 }
