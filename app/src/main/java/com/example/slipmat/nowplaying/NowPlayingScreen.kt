@@ -59,6 +59,7 @@ fun NowPlayingScreen(
     viewModel: NowPlayingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -101,6 +102,11 @@ fun NowPlayingScreen(
             SeekBar(state = state, onSeek = viewModel::seekTo)
             TransportControls(state = state, viewModel = viewModel)
             ModeControls(state = state, viewModel = viewModel)
+            SleepTimerControls(
+                state = sleepTimer,
+                onStart = viewModel::startSleepTimer,
+                onCancel = viewModel::cancelSleepTimer,
+            )
         }
     }
 }

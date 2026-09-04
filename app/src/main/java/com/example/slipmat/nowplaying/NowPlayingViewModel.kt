@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.RepeatMode
+import com.example.slipmat.core.media.SleepTimerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -20,6 +21,8 @@ class NowPlayingViewModel @Inject constructor(
 ) : ViewModel() {
 
     val state: StateFlow<PlayerState> = playback.state
+
+    val sleepTimer: StateFlow<SleepTimerState> = playback.sleepTimerState
 
     fun togglePlayPause() {
         if (state.value.isPlaying) playback.pause() else playback.play()
@@ -43,4 +46,8 @@ class NowPlayingViewModel @Inject constructor(
     fun moveQueueItem(fromIndex: Int, toIndex: Int) = playback.moveQueueItem(fromIndex, toIndex)
 
     fun skipToQueueIndex(index: Int) = playback.skipToQueueIndex(index)
+
+    fun startSleepTimer(minutes: Int) = playback.startSleepTimer(minutes * 60_000L)
+
+    fun cancelSleepTimer() = playback.cancelSleepTimer()
 }
