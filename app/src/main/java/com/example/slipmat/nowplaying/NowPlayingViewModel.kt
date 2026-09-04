@@ -39,4 +39,8 @@ class NowPlayingViewModel @Inject constructor(
 
     /** One button, three states: off → all → one → off. */
     fun cycleRepeatMode() = playback.setRepeatMode(state.value.repeatMode.next())
+
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) = playback.moveQueueItem(fromIndex, toIndex)
+
+    fun skipToQueueIndex(index: Int) = playback.skipToQueueIndex(index)
 }

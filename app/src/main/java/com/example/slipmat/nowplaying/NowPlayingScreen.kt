@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -53,6 +54,7 @@ import com.example.slipmat.library.formatDuration
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
+    onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = hiltViewModel(),
 ) {
@@ -64,6 +66,11 @@ fun NowPlayingScreen(
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close")
+                }
+            },
+            actions = {
+                IconButton(onClick = onOpenQueue) {
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
                 }
             },
         )

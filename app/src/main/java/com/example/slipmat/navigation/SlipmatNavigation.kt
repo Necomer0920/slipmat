@@ -28,6 +28,7 @@ import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.library.LibraryScreen
 import com.example.slipmat.nowplaying.MiniPlayer
 import com.example.slipmat.nowplaying.NowPlayingScreen
+import com.example.slipmat.nowplaying.QueueScreen
 
 /** The four browse modes. */
 enum class BrowseTab(val route: String, val label: String) {
@@ -52,6 +53,7 @@ private object Routes {
     fun folder(path: String) = "folder/${Uri.encode(path)}"
 
     const val NOW_PLAYING = "nowPlaying"
+    const val QUEUE = "queue"
 }
 
 @Composable
@@ -62,7 +64,7 @@ fun SlipmatNavHost(
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val onNowPlaying = currentRoute == Routes.NOW_PLAYING
+    val onNowPlaying = currentRoute == Routes.NOW_PLAYING || currentRoute == Routes.QUEUE
 
     Column(modifier = modifier.fillMaxSize()) {
         NavHost(
@@ -109,7 +111,13 @@ fun SlipmatNavHost(
                 FolderDetailScreen(onBack = { navController.popBackStack() }, onPlay = onPlay)
             }
             composable(Routes.NOW_PLAYING) {
-                NowPlayingScreen(onBack = { navController.popBackStack() })
+                NowPlayingScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenQueue = { navController.navigate(Routes.QUEUE) },
+                )
+            }
+            composable(Routes.QUEUE) {
+                QueueScreen(onBack = { navController.popBackStack() })
             }
         }
 
