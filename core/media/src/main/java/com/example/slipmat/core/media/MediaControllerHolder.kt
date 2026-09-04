@@ -7,6 +7,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
@@ -186,6 +187,7 @@ class MediaControllerHolder @Inject constructor(
             repeatMode = c.repeatMode.toRepeatMode(),
             queue = c.readQueue(),
             queueIndex = c.currentMediaItemIndex,
+            sourceBpm = c.readSourceBpm(),
             speed = c.playbackParameters.speed,
             pitch = c.playbackParameters.pitch,
         )
@@ -225,3 +227,27 @@ private fun MediaController.readQueue(): List<QueueItem> =
             artworkUri = item.mediaMetadata.artworkUri?.toString(),
         )
     }
+
+/**
+ * The track's own tempo, if the file happens to carry one.
+ *
+ * Neither MediaStore nor `MediaMetadataRetriever` exposes BPM — MediaStore has no such column, and
+ * the retriever's key list has no equivalent — so this reads ID3's `TBPM` frame out of the decoded
+ * track format, which Media3 has already parsed. Returns null for the many files that have no such
+ * tag, and the readout hides rather than inventing a number.
+ */
+private fun MediaController.readSourceBpm(): Float? {
+    for (group in currentTracks.groups) {
+        for (i in 0 until group.length) {
+            val metadata = group.getTrackFormat(i).metadata ?: continue
+            for (e in 0 until metadata.length()) {
+                val entry = metadata.get(e)
+                if (entry is TextInformationFrame && entry.id.equals("TBPM", ignoreCase = true)) {
+                    val bpm = entry.values.firstOrNull()?.trim()?.toFloatOrNull()
+                    if (bpm != null && bpm > 0f) return bpm
+                }
+            }
+        }
+    }
+    return null
+}

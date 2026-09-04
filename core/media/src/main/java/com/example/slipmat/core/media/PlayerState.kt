@@ -26,6 +26,8 @@ data class PlayerState(
     val speed: Float = 1f,
     /** Pitch multiplier as the player reports it; 1f is normal. */
     val pitch: Float = 1f,
+    /** The file's own tempo from its tags, or null when it carries none. */
+    val sourceBpm: Float? = null,
 ) {
     val hasMedia: Boolean get() = mediaId != null
 
@@ -61,6 +63,7 @@ fun playerStateOf(
     queueIndex: Int = -1,
     speed: Float = 1f,
     pitch: Float = 1f,
+    sourceBpm: Float? = null,
 ): PlayerState {
     val duration = if (rawDurationMs > 0L) rawDurationMs else 0L
     val position = when {
@@ -82,5 +85,6 @@ fun playerStateOf(
         queueIndex = queueIndex,
         speed = speed,
         pitch = pitch,
+        sourceBpm = sourceBpm,
     )
 }

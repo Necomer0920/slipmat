@@ -180,7 +180,7 @@ internal fun NowPlayingContent(
                 sliderValue = sliderValue,
                 keyLock = keyLock,
                 range = pitchRange,
-                sourceBpm = sourceBpm,
+                sourceBpm = state.sourceBpm,
                 onSliderChange = actions.onSliderChange,
                 onSliderChangeFinished = actions.onSliderChangeFinished,
                 onKeyLockChange = actions.onKeyLockChange,
