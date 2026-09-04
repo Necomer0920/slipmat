@@ -74,6 +74,7 @@ data class NowPlayingActions(
     val onStartSleepTimer: (Int) -> Unit = {},
     val onCancelSleepTimer: () -> Unit = {},
     val onSliderChange: (Float) -> Unit = {},
+    val onSliderChangeFinished: () -> Unit = {},
     val onKeyLockChange: (Boolean) -> Unit = {},
     val onRangeChange: (PitchRange) -> Unit = {},
 )
@@ -111,6 +112,7 @@ fun NowPlayingScreen(
             onStartSleepTimer = viewModel::startSleepTimer,
             onCancelSleepTimer = viewModel::cancelSleepTimer,
             onSliderChange = viewModel::onSliderChange,
+            onSliderChangeFinished = viewModel::onSliderChangeFinished,
             onKeyLockChange = viewModel::onKeyLockChange,
             onRangeChange = viewModel::onRangeChange,
         ),
@@ -180,6 +182,7 @@ internal fun NowPlayingContent(
                 range = pitchRange,
                 sourceBpm = sourceBpm,
                 onSliderChange = actions.onSliderChange,
+                onSliderChangeFinished = actions.onSliderChangeFinished,
                 onKeyLockChange = actions.onKeyLockChange,
                 onRangeChange = actions.onRangeChange,
             )

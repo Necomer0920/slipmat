@@ -36,6 +36,7 @@ fun PitchTempoControls(
     range: PitchRange,
     sourceBpm: Float?,
     onSliderChange: (Float) -> Unit,
+    onSliderChangeFinished: () -> Unit,
     onKeyLockChange: (Boolean) -> Unit,
     onRangeChange: (PitchRange) -> Unit,
     modifier: Modifier = Modifier,
@@ -85,6 +86,7 @@ fun PitchTempoControls(
                 wasAtDetent.value = nowAtDetent
                 onSliderChange(raw)
             },
+            onValueChangeFinished = onSliderChangeFinished,
             valueRange = -1f..1f,
             modifier = Modifier.fillMaxWidth(),
         )

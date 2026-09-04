@@ -79,9 +79,27 @@ class NowPlayingViewModel @Inject constructor(
 
     fun cancelSleepTimer() = playback.cancelSleepTimer()
 
+    /**
+     * Updates the slider immediately, but rate-limits what reaches the player.
+     *
+     * A drag emits a new value every frame. Pushing each one through
+     * `setPlaybackParameters` reconfigures the audio pipeline dozens of times a second, and each
+     * reconfiguration can splice the stream audibly. The UI stays at frame rate; the player hears
+     * at most one change per [APPLY_INTERVAL_MS], plus a final exact value on release.
+     */
     fun onSliderChange(value: Float) {
         _sliderValue.value = value
-        applySpeedPitch(value, keyLock.value, pitchRange.value)
+        val now = System.currentTimeMillis()
+        if (now - lastAppliedAtMs >= APPLY_INTERVAL_MS) {
+            lastAppliedAtMs = now
+            applySpeedPitch(value, keyLock.value, pitchRange.value)
+        }
+    }
+
+    /** Called when the finger lifts, so the player ends up on exactly the value shown. */
+    fun onSliderChangeFinished() {
+        lastAppliedAtMs = System.currentTimeMillis()
+        applySpeedPitch(_sliderValue.value, keyLock.value, pitchRange.value)
     }
 
     fun onKeyLockChange(enabled: Boolean) {
@@ -100,7 +118,12 @@ class NowPlayingViewModel @Inject constructor(
         playback.setSpeedPitch(speedPitchFor(slider, range, keyLock))
     }
 
+    private var lastAppliedAtMs = 0L
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
+
+        /** Fast enough to feel continuous, slow enough not to thrash the audio pipeline. */
+        const val APPLY_INTERVAL_MS = 100L
     }
 }
