@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -53,10 +54,17 @@ fun PitchTempoControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = formatTempoPercent(tempoPercent(sliderValue, range)),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Column {
+                Text(
+                    text = "Tempo",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = formatTempoPercent(tempoPercent(sliderValue, range)),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             playingBpm(sourceBpm, sliderValue, range)?.let { bpm ->
                 Text(
                     text = String.format(Locale.US, "%.1f BPM", bpm),
@@ -97,7 +105,17 @@ fun PitchTempoControls(
                 Switch(checked = keyLock, onCheckedChange = onKeyLockChange)
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Unlabelled percentages read as a mystery scale. Naming the row says what they do:
+            // they set how far the slider above can pull the tempo.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Range",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
                 PitchRange.entries.forEach { option ->
                     FilterChip(
                         selected = option == range,
