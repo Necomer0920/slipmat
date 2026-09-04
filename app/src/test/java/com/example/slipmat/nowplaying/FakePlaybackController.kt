@@ -4,6 +4,7 @@ import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.core.media.RepeatMode
+import com.example.slipmat.core.media.SpeedPitch
 import com.example.slipmat.core.media.SleepTimerState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,4 +43,21 @@ class FakePlaybackController : PlaybackController {
     override fun skipToQueueIndex(index: Int) { calls += "skipTo($index)" }
     override fun startSleepTimer(durationMs: Long) { calls += "startSleepTimer($durationMs)" }
     override fun cancelSleepTimer() { calls += "cancelSleepTimer" }
+    override fun setSpeedPitch(speedPitch: SpeedPitch) { calls += "speed=${speedPitch.speed},pitch=${speedPitch.pitch}" }
+}
+
+/** In-memory settings, so the view model can be tested without a Context or DataStore. */
+class FakePlaybackSettings(
+    keyLockInitial: Boolean = true,
+    rangeInitial: String? = null,
+) : com.example.slipmat.core.data.settings.PlaybackSettings {
+
+    private val _keyLock = MutableStateFlow(keyLockInitial)
+    private val _range = MutableStateFlow(rangeInitial)
+
+    override val keyLock: kotlinx.coroutines.flow.Flow<Boolean> = _keyLock
+    override val pitchRangeName: kotlinx.coroutines.flow.Flow<String?> = _range
+
+    override suspend fun setKeyLock(enabled: Boolean) { _keyLock.value = enabled }
+    override suspend fun setPitchRangeName(name: String) { _range.value = name }
 }

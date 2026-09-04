@@ -27,20 +27,35 @@ private val PITCH_RANGE = stringPreferencesKey("pitch_range")
  * Stored as the enum's name rather than its ordinal — reordering the enum would otherwise
  * reinterpret everyone's saved setting.
  */
+interface PlaybackSettings {
+
+    val keyLock: Flow<Boolean>
+
+    val pitchRangeName: Flow<String?>
+
+    suspend fun setKeyLock(enabled: Boolean)
+
+    suspend fun setPitchRangeName(name: String)
+}
+
+/**
+ * An interface with a DataStore implementation behind it, rather than the DataStore class itself:
+ * a view model that reads settings should be testable without a `Context`.
+ */
 @Singleton
-class PlaybackSettings @Inject constructor(
+class DataStorePlaybackSettings @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : PlaybackSettings {
 
-    val keyLock: Flow<Boolean> = context.dataStore.data.map { it[KEY_LOCK] ?: true }
+    override val keyLock: Flow<Boolean> = context.dataStore.data.map { it[KEY_LOCK] ?: true }
 
-    val pitchRangeName: Flow<String?> = context.dataStore.data.map { it[PITCH_RANGE] }
+    override val pitchRangeName: Flow<String?> = context.dataStore.data.map { it[PITCH_RANGE] }
 
-    suspend fun setKeyLock(enabled: Boolean) {
+    override suspend fun setKeyLock(enabled: Boolean) {
         context.dataStore.edit { it[KEY_LOCK] = enabled }
     }
 
-    suspend fun setPitchRangeName(name: String) {
+    override suspend fun setPitchRangeName(name: String) {
         context.dataStore.edit { it[PITCH_RANGE] = name }
     }
 }

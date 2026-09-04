@@ -8,7 +8,8 @@ import org.junit.Test
 class NowPlayingViewModelTest {
 
     private val playback = FakePlaybackController()
-    private val viewModel = NowPlayingViewModel(playback)
+    private val settings = FakePlaybackSettings()
+    private val viewModel = NowPlayingViewModel(playback, settings)
 
     @Test
     fun `the play button pauses when something is playing`() {
