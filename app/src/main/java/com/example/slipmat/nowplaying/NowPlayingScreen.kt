@@ -49,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
+import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SleepTimerState
 import com.example.slipmat.library.formatDuration
@@ -72,6 +73,9 @@ data class NowPlayingActions(
     val onCycleRepeat: () -> Unit = {},
     val onStartSleepTimer: (Int) -> Unit = {},
     val onCancelSleepTimer: () -> Unit = {},
+    val onSliderChange: (Float) -> Unit = {},
+    val onKeyLockChange: (Boolean) -> Unit = {},
+    val onRangeChange: (PitchRange) -> Unit = {},
 )
 
 @Composable
@@ -83,10 +87,16 @@ fun NowPlayingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
+    val sliderValue by viewModel.sliderValue.collectAsStateWithLifecycle()
+    val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
+    val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
     NowPlayingContent(
         state = state,
         sleepTimer = sleepTimer,
+        sliderValue = sliderValue,
+        keyLock = keyLock,
+        pitchRange = pitchRange,
         actions = NowPlayingActions(
             onBack = onBack,
             onOpenQueue = onOpenQueue,
@@ -100,6 +110,9 @@ fun NowPlayingScreen(
             onCycleRepeat = viewModel::cycleRepeatMode,
             onStartSleepTimer = viewModel::startSleepTimer,
             onCancelSleepTimer = viewModel::cancelSleepTimer,
+            onSliderChange = viewModel::onSliderChange,
+            onKeyLockChange = viewModel::onKeyLockChange,
+            onRangeChange = viewModel::onRangeChange,
         ),
         modifier = modifier,
     )
@@ -112,6 +125,10 @@ internal fun NowPlayingContent(
     sleepTimer: SleepTimerState,
     actions: NowPlayingActions,
     modifier: Modifier = Modifier,
+    sliderValue: Float = 0f,
+    keyLock: Boolean = true,
+    pitchRange: PitchRange = PitchRange.Narrow,
+    sourceBpm: Float? = null,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -157,6 +174,15 @@ internal fun NowPlayingContent(
             )
 
             SeekBar(state = state, onSeek = actions.onSeek)
+            PitchTempoControls(
+                sliderValue = sliderValue,
+                keyLock = keyLock,
+                range = pitchRange,
+                sourceBpm = sourceBpm,
+                onSliderChange = actions.onSliderChange,
+                onKeyLockChange = actions.onKeyLockChange,
+                onRangeChange = actions.onRangeChange,
+            )
             TransportControls(state = state, actions = actions)
             ModeControls(state = state, actions = actions)
             SleepTimerControls(
