@@ -18,8 +18,16 @@ data class PlayerState(
     val artworkUri: String? = null,
     val shuffleEnabled: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.Off,
+    /** The whole queue, in play order. Empty until something is queued. */
+    val queue: List<QueueItem> = emptyList(),
+    /** Index of the playing item within [queue], or `-1` when nothing is queued. */
+    val queueIndex: Int = -1,
 ) {
     val hasMedia: Boolean get() = mediaId != null
+
+    /** What is still to come, excluding the item playing now. */
+    val upNext: List<QueueItem>
+        get() = if (queueIndex in queue.indices) queue.drop(queueIndex + 1) else emptyList()
 
     /** Fraction played, always within 0f..1f, and 0f when the duration is not yet known. */
     val progress: Float
@@ -45,6 +53,8 @@ fun playerStateOf(
     artworkUri: String? = null,
     shuffleEnabled: Boolean = false,
     repeatMode: RepeatMode = RepeatMode.Off,
+    queue: List<QueueItem> = emptyList(),
+    queueIndex: Int = -1,
 ): PlayerState {
     val duration = if (rawDurationMs > 0L) rawDurationMs else 0L
     val position = when {
@@ -62,5 +72,7 @@ fun playerStateOf(
         artworkUri = artworkUri?.takeIf { it.isNotBlank() },
         shuffleEnabled = shuffleEnabled,
         repeatMode = repeatMode,
+        queue = queue,
+        queueIndex = queueIndex,
     )
 }

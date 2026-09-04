@@ -42,4 +42,10 @@ interface PlaybackController {
     fun setShuffle(enabled: Boolean)
 
     fun setRepeatMode(mode: RepeatMode)
+
+    /** Reorder the queue. Indices are positions in [PlayerState.queue]. */
+    fun moveQueueItem(fromIndex: Int, toIndex: Int)
+
+    /** Jump straight to a queue position without rebuilding the queue. */
+    fun skipToQueueIndex(index: Int)
 }

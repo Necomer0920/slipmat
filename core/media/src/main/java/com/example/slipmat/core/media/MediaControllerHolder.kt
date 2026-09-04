@@ -117,6 +117,18 @@ class MediaControllerHolder @Inject constructor(
 
     override fun setRepeatMode(mode: RepeatMode) = withController { it.repeatMode = mode.toMedia3() }
 
+    override fun moveQueueItem(fromIndex: Int, toIndex: Int) = withController { c ->
+        val count = c.mediaItemCount
+        if (fromIndex !in 0 until count || toIndex !in 0 until count) return@withController
+        c.moveMediaItem(fromIndex, toIndex)
+    }
+
+    override fun skipToQueueIndex(index: Int) = withController { c ->
+        if (index !in 0 until c.mediaItemCount) return@withController
+        c.seekTo(index, 0L)
+        c.play()
+    }
+
     private fun withController(block: (MediaController) -> Unit) {
         scope.launch { controller?.let(block) }
     }
@@ -160,6 +172,8 @@ class MediaControllerHolder @Inject constructor(
             artworkUri = metadata.artworkUri?.toString(),
             shuffleEnabled = c.shuffleModeEnabled,
             repeatMode = c.repeatMode.toRepeatMode(),
+            queue = c.readQueue(),
+            queueIndex = c.currentMediaItemIndex,
         )
     }
 }
@@ -179,3 +193,21 @@ private fun Int.toRepeatMode(): RepeatMode = when (this) {
     Player.REPEAT_MODE_ONE -> RepeatMode.One
     else -> RepeatMode.Off
 }
+
+/**
+ * Reads the queue back out of the controller.
+ *
+ * The metadata was put there by [MediaControllerHolder.playQueue], so this round-trips rather than
+ * re-reading tags — which also means the queue screen shows the library's artwork, not just
+ * whatever happened to be embedded in the file.
+ */
+private fun MediaController.readQueue(): List<QueueItem> =
+    (0 until mediaItemCount).map { index ->
+        val item = getMediaItemAt(index)
+        QueueItem(
+            uri = item.localConfiguration?.uri?.toString() ?: item.mediaId,
+            title = item.mediaMetadata.title?.toString(),
+            artist = item.mediaMetadata.artist?.toString(),
+            artworkUri = item.mediaMetadata.artworkUri?.toString(),
+        )
+    }
