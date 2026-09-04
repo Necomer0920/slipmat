@@ -3,13 +3,18 @@ package com.example.slipmat.nowplaying
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.RepeatMode
 import org.junit.Assert.assertEquals
+import com.example.slipmat.MainDispatcherRule
+import org.junit.Rule
 import org.junit.Test
 
 class NowPlayingViewModelTest {
 
+    @get:Rule
+    val mainDispatcher = MainDispatcherRule()
+
     private val playback = FakePlaybackController()
     private val settings = FakePlaybackSettings()
-    private val viewModel = NowPlayingViewModel(playback, settings)
+    private val viewModel = NowPlayingViewModel(playback, settings, FakeWaveformSource())
 
     @Test
     fun `the play button pauses when something is playing`() {

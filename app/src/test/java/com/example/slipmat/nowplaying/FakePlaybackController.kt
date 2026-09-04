@@ -61,3 +61,10 @@ class FakePlaybackSettings(
     override suspend fun setKeyLock(enabled: Boolean) { _keyLock.value = enabled }
     override suspend fun setPitchRangeName(name: String) { _range.value = name }
 }
+
+/** Returns a fixed waveform without decoding anything. */
+class FakeWaveformSource(
+    private val peaks: FloatArray? = null,
+) : com.example.slipmat.core.media.waveform.WaveformSource {
+    override suspend fun peaksFor(mediaUri: String): FloatArray? = peaks
+}

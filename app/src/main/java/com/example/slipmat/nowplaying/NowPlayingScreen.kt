@@ -69,6 +69,7 @@ data class NowPlayingActions(
     val onSkipForward: () -> Unit = {},
     val onSkipBack: () -> Unit = {},
     val onSeek: (Long) -> Unit = {},
+    val onSeekFraction: (Float) -> Unit = {},
     val onToggleShuffle: () -> Unit = {},
     val onCycleRepeat: () -> Unit = {},
     val onStartSleepTimer: (Int) -> Unit = {},
@@ -89,6 +90,7 @@ fun NowPlayingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
     val sliderValue by viewModel.sliderValue.collectAsStateWithLifecycle()
+    val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
@@ -96,6 +98,7 @@ fun NowPlayingScreen(
         state = state,
         sleepTimer = sleepTimer,
         sliderValue = sliderValue,
+        waveform = waveform,
         keyLock = keyLock,
         pitchRange = pitchRange,
         actions = NowPlayingActions(
@@ -107,6 +110,7 @@ fun NowPlayingScreen(
             onSkipForward = viewModel::skipForward,
             onSkipBack = viewModel::skipBack,
             onSeek = viewModel::seekTo,
+            onSeekFraction = viewModel::seekToFraction,
             onToggleShuffle = viewModel::toggleShuffle,
             onCycleRepeat = viewModel::cycleRepeatMode,
             onStartSleepTimer = viewModel::startSleepTimer,
@@ -128,6 +132,7 @@ internal fun NowPlayingContent(
     actions: NowPlayingActions,
     modifier: Modifier = Modifier,
     sliderValue: Float = 0f,
+    waveform: FloatArray? = null,
     keyLock: Boolean = true,
     pitchRange: PitchRange = PitchRange.Narrow,
     sourceBpm: Float? = null,
@@ -175,7 +180,12 @@ internal fun NowPlayingContent(
                 overflow = TextOverflow.Ellipsis,
             )
 
-            SeekBar(state = state, onSeek = actions.onSeek)
+            WaveformSeekBar(
+                peaks = waveform,
+                progress = state.progress,
+                durationMs = state.durationMs,
+                onSeek = actions.onSeekFraction,
+            )
             PitchTempoControls(
                 sliderValue = sliderValue,
                 keyLock = keyLock,

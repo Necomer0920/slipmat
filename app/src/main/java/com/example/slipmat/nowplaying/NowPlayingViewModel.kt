@@ -5,6 +5,9 @@ import com.example.slipmat.core.data.settings.PlaybackSettings
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.speedPitchFor
+import com.example.slipmat.core.media.waveform.WaveformSource
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SleepTimerState
@@ -29,7 +32,33 @@ import javax.inject.Inject
 class NowPlayingViewModel @Inject constructor(
     private val playback: PlaybackController,
     private val settings: PlaybackSettings,
+    private val waveforms: WaveformSource,
 ) : ViewModel() {
+
+    private val _waveform = MutableStateFlow<FloatArray?>(null)
+
+    /** Peaks for the current track, or null while decoding or when the file cannot be decoded. */
+    val waveform: StateFlow<FloatArray?> = _waveform.asStateFlow()
+
+    private var waveformJob: Job? = null
+
+    init {
+        // One decode per track. Cancelling the previous job matters: skipping through a queue
+        // would otherwise leave several multi-second decodes racing to write the same field.
+        viewModelScope.launch {
+            playback.state
+                .map { it.mediaId to it.queue.getOrNull(it.queueIndex)?.uri }
+                .distinctUntilChanged()
+                .collect { (_, uri) ->
+                    waveformJob?.cancel()
+                    _waveform.value = null
+                    if (uri == null) return@collect
+                    waveformJob = viewModelScope.launch {
+                        _waveform.value = waveforms.peaksFor(uri)
+                    }
+                }
+        }
+    }
 
     /**
      * The slider position, owned here rather than read back from the player.
@@ -61,6 +90,12 @@ class NowPlayingViewModel @Inject constructor(
     fun previous() = playback.previous()
 
     fun seekTo(positionMs: Long) = playback.seekTo(positionMs)
+
+    /** Seek by fraction, which is what a waveform drag produces. */
+    fun seekToFraction(fraction: Float) {
+        val duration = state.value.durationMs
+        if (duration > 0L) playback.seekTo((fraction * duration).toLong())
+    }
 
     fun skipForward() = playback.skipForward()
 
