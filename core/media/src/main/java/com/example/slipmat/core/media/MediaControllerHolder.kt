@@ -35,7 +35,14 @@ import javax.inject.Singleton
 @Singleton
 class MediaControllerHolder @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val sleepTimer: SleepTimer,
 ) : PlaybackController {
+
+    override val sleepTimerState: StateFlow<SleepTimerState> = sleepTimer.state
+
+    override fun startSleepTimer(durationMs: Long) = sleepTimer.start(durationMs)
+
+    override fun cancelSleepTimer() = sleepTimer.cancel()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 

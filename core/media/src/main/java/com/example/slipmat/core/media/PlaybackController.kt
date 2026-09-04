@@ -48,4 +48,11 @@ interface PlaybackController {
 
     /** Jump straight to a queue position without rebuilding the queue. */
     fun skipToQueueIndex(index: Int)
+
+    /** Countdown to the end of playback. Keeps running with the app backgrounded. */
+    val sleepTimerState: StateFlow<SleepTimerState>
+
+    fun startSleepTimer(durationMs: Long)
+
+    fun cancelSleepTimer()
 }

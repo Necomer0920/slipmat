@@ -7,6 +7,7 @@ import com.example.slipmat.core.data.db.PlaybackPositionDao
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -29,6 +30,9 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var playbackPositions: PlaybackPositionDao
 
+    @Inject
+    lateinit var sleepTimer: SleepTimer
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var positionKeeper: PositionKeeper? = null
 
@@ -42,6 +46,7 @@ class PlaybackService : MediaSessionService() {
 
         positionKeeper = PositionKeeper(player, playbackPositions, serviceScope).also { it.start() }
         restoreLastSession()
+        observeSleepTimer()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -89,6 +94,30 @@ class PlaybackService : MediaSessionService() {
             player.prepare()
             player.seekTo(last.positionMs)
             // Deliberately not play(): waking to unexpected audio is worse than a tap.
+        }
+    }
+
+    /**
+     * Applies the sleep timer to the player.
+     *
+     * The fade lives here rather than in [SleepTimer] because the player belongs to this service.
+     * Volume is restored on the way out, otherwise the next track after a timer would start silent.
+     */
+    private fun observeSleepTimer() {
+        serviceScope.launch {
+            sleepTimer.state.collectLatest { state ->
+                when (state) {
+                    is SleepTimerState.Idle -> player.volume = 1f
+                    is SleepTimerState.Running -> {
+                        player.volume = state.fadeFraction
+                        if (state.remainingMs <= 0L) {
+                            player.pause()
+                            player.volume = 1f
+                            sleepTimer.cancel()
+                        }
+                    }
+                }
+            }
         }
     }
 
