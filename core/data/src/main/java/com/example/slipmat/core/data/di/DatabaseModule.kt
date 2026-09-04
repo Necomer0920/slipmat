@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.slipmat.core.data.db.SlipmatDatabase
 import com.example.slipmat.core.data.db.PlaybackPositionDao
 import com.example.slipmat.core.data.db.TrackDao
+import com.example.slipmat.core.data.db.WaveformDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,6 +25,9 @@ object DatabaseModule {
 
     @Provides
     fun provideTrackDao(database: SlipmatDatabase): TrackDao = database.trackDao()
+
+    @Provides
+    fun provideWaveformDao(database: SlipmatDatabase): WaveformDao = database.waveformDao()
 
     @Provides
     fun providePlaybackPositionDao(database: SlipmatDatabase): PlaybackPositionDao =

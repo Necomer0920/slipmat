@@ -50,4 +50,38 @@ class MigrationTest {
             assertEquals(0, cursor.getInt(0))
         }
     }
+
+    @Test
+    fun migrate2To3AddsTheWaveformCacheAndKeepsPositions() {
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO tracks
+                  (id, title, artist, albumArtist, album, albumId, durationMs, uri, folderPath, dateModified, albumArtUri)
+                VALUES
+                  (1, 'Kept Track', 'A', 'A', 'Al', 7, 60000, 'content://x/1', '/Music', 100, NULL)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "INSERT INTO playback_positions (mediaUri, positionMs, updatedAt) VALUES ('content://x/1', 4242, 1)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 3, true)
+
+        // A resume position surviving a schema change is the whole point of migrating rather than
+        // recreating: losing it means every track silently restarts.
+        db.query("SELECT positionMs FROM playback_positions").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(4242, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM waveforms").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM tracks").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(1, cursor.getInt(0))
+        }
+    }
 }
