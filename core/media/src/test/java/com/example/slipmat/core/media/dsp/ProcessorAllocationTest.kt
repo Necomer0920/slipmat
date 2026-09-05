@@ -74,6 +74,42 @@ class ProcessorAllocationTest {
     }
 
     @Test
+    fun `the EQ allocates nothing with every band active`() {
+        // Eight bands is eight times the arithmetic of one filter and none of the allocation. The
+        // arithmetic is the part this cannot speak to — that is a device check.
+        val eq = BandEqProcessor().apply {
+            configure(format())
+            flush()
+            setEnabled(true)
+            setGains(FloatArray(EQ_BANDS.size) { band -> if (band % 2 == 0) 9f else -9f })
+        }
+
+        assertNoAllocation("eq") { buffer -> eq.queueInput(buffer); eq.getOutput() }
+    }
+
+    @Test
+    fun `the whole chain together allocates nothing`() {
+        // The order AudioEffects actually installs them in, so this is the real signal path.
+        val eq = BandEqProcessor().apply {
+            configure(format()); flush(); setEnabled(true)
+            setGains(FloatArray(EQ_BANDS.size) { 6f })
+        }
+        val delay = DelayAudioProcessor().apply {
+            configure(format()); flush(); setEnabled(true); setFeedback(0.5f)
+        }
+        val filter = BiquadAudioProcessor().apply {
+            configure(format()); flush(); setEnabled(true); setCutoff(4_000f)
+        }
+
+        assertNoAllocation("chain") { buffer ->
+            eq.queueInput(buffer)
+            delay.queueInput(eq.getOutput())
+            filter.queueInput(delay.getOutput())
+            filter.getOutput()
+        }
+    }
+
+    @Test
     fun `sweeping a parameter allocates nothing`() {
         // Sweeping is the case that matters: it is the only time these are touched from two
         // threads, and the tempting way to hand a new value across is to allocate a small object.
