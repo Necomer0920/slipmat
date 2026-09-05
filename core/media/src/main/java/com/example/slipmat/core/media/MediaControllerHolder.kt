@@ -69,6 +69,25 @@ class MediaControllerHolder @Inject constructor(
     private val _delayState = MutableStateFlow(DelayState())
     override val delayState: StateFlow<DelayState> = _delayState.asStateFlow()
 
+    /**
+     * Returns the effects to their defaults, both the processors and the state the UI reads.
+     *
+     * Same rule as the fader: a track picked from the library should not arrive already filtered
+     * or already echoing, with the controls off screen and nothing to explain the sound.
+     */
+    private fun resetEffects() {
+        effects.filter.setEnabled(false)
+        effects.filter.setCutoff(FilterState().cutoffHz)
+        effects.filter.setMode(FilterState().mode)
+        _filterState.value = FilterState()
+
+        effects.delay.setEnabled(false)
+        effects.delay.setDelayMs(DelayState().timeMs)
+        effects.delay.setFeedback(DelayState().feedback)
+        effects.delay.setMix(DelayState().mix)
+        _delayState.value = DelayState()
+    }
+
     override fun setDelayEnabled(enabled: Boolean) {
         effects.delay.setEnabled(enabled)
         _delayState.value = _delayState.value.copy(enabled = enabled)
@@ -164,6 +183,7 @@ class MediaControllerHolder @Inject constructor(
         _tempoSlider.value = 0f
         _keyLock.value = true
         controller.playbackParameters = PlaybackParameters.DEFAULT
+        resetEffects()
 
         controller.setMediaItems(
             items.map { item ->
