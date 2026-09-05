@@ -17,6 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class AudioEffects @Inject constructor() {
 
+    val eq = BandEqProcessor()
+
     val delay = DelayAudioProcessor()
 
     val filter = BiquadAudioProcessor()
@@ -25,12 +27,16 @@ class AudioEffects @Inject constructor() {
      * The signal path, left to right — and the order is a decision about how the app plays, not
      * an incidental array order.
      *
-     * Delay first, filter last, so the filter governs everything the listener hears including the
-     * tails: cut the track out, leave the echo ringing, and sweep the whole wash away. The other
-     * order freezes each echo with the tone it was captured at, and sweeping the filter then leaves
-     * the existing repeats untouched, which reads as the filter being broken.
+     * EQ first: it is tone shaping of the *track*, the thing you set once because a record is dull
+     * or boomy, so everything downstream should hear the corrected version — including the echoes,
+     * which are that track a moment later.
+     *
+     * Filter last, so it governs everything the listener hears including the tails: cut the track
+     * out, leave the echo ringing, and sweep the whole wash away. The other order freezes each echo
+     * with the tone it was captured at, and sweeping the filter then leaves the existing repeats
+     * untouched, which reads as the filter being broken.
      */
-    fun processors(): Array<AudioProcessor> = arrayOf(delay, filter)
+    fun processors(): Array<AudioProcessor> = arrayOf(eq, delay, filter)
 }
 
 /**
