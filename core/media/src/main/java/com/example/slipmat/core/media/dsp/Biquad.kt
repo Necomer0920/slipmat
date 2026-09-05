@@ -78,6 +78,65 @@ fun biquadCoefficients(
 }
 
 /**
+ * Centre frequencies for the EQ, log-spaced so each band covers the same musical interval.
+ *
+ * Even spacing in hertz would put half the bands above 8 kHz, where there is little to adjust, and
+ * leave the bass — which is what anyone actually reaches for — covered by one.
+ */
+val EQ_BANDS: List<Float> = listOf(60f, 130f, 300f, 650f, 1500f, 3200f, 7000f, 16_000f)
+
+/** Ratio between neighbouring band centres: roughly 2.2x, or about 1.15 octaves. */
+const val EQ_BAND_SPACING = 2.2f
+
+/**
+ * Q matched to [EQ_BAND_SPACING], not chosen by ear.
+ *
+ * For a bandwidth of N octaves, Q = sqrt(2^N) / (2^N - 1). At 1.15 octaves that is about 1.22.
+ * Narrower and the bands leave untouched gaps between them, so the curve on screen stops matching
+ * what is heard; wider and every band drags its neighbours with it.
+ */
+const val EQ_BAND_Q = 1.22f
+
+/** How far a band can be pushed either way. */
+const val EQ_MAX_GAIN_DB = 12f
+
+/**
+ * Designs one peaking band: [gainDb] at [centerHz], tapering back to flat either side.
+ *
+ * `A` is `10^(gainDb/40)` — **forty**. The peak gain of this filter is `A²`, so the exponent is
+ * halved here to make that come out at the requested dB. Writing 20, which is the usual reflex for
+ * a dB-to-linear conversion, gives a filter that boosts by exactly twice what was asked for and
+ * looks entirely reasonable doing it.
+ */
+fun peakingCoefficients(
+    centerHz: Float,
+    gainDb: Float,
+    sampleRate: Int,
+    q: Float = EQ_BAND_Q,
+): BiquadCoefficients {
+    if (sampleRate <= 0) return BiquadCoefficients.BYPASS
+    if (gainDb == 0f) return BiquadCoefficients.BYPASS
+
+    val nyquist = sampleRate / 2f
+    val center = centerHz.coerceIn(MIN_CUTOFF_HZ, nyquist * MAX_CUTOFF_FRACTION)
+    val safeQ = if (q <= 0f) EQ_BAND_Q else q
+
+    val a = Math.pow(10.0, gainDb.toDouble() / 40.0)
+    val w0 = 2.0 * PI * center / sampleRate
+    val cosW0 = cos(w0)
+    val alpha = sin(w0) / (2.0 * safeQ)
+
+    val a0 = 1.0 + alpha / a
+    return BiquadCoefficients(
+        b0 = ((1.0 + alpha * a) / a0).toFloat(),
+        b1 = ((-2.0 * cosW0) / a0).toFloat(),
+        b2 = ((1.0 - alpha * a) / a0).toFloat(),
+        a1 = ((-2.0 * cosW0) / a0).toFloat(),
+        a2 = ((1.0 - alpha / a) / a0).toFloat(),
+    )
+}
+
+/**
  * Magnitude of the filter's response at [frequencyHz].
  *
  * Exists so the tests can assert what the filter *does* — passes lows, rejects highs, −3 dB at
