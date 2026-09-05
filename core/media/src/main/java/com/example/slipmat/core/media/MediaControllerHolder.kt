@@ -128,6 +128,19 @@ class MediaControllerHolder @Inject constructor(
 
     override fun playQueue(items: List<QueueItem>, startIndex: Int) = withController { controller ->
         if (items.isEmpty()) return@withController
+
+        // A new queue is a fresh start: the fader returns to centre and the key holds again.
+        // Moving *within* a queue keeps what was set — auto-advance, next, previous and tapping a
+        // queue row are all one continuous session, and a deck's fader does not spring back
+        // between records in a mix. Loading a new queue is the boundary.
+        //
+        // Written before prepare(), not after: those calls reconfigure the pipeline, and a
+        // parameters write racing that reconfiguration is how the fader would end up reading
+        // centre over audio still running at the old speed.
+        _tempoSlider.value = 0f
+        _keyLock.value = true
+        controller.playbackParameters = PlaybackParameters.DEFAULT
+
         controller.setMediaItems(
             items.map { item ->
                 MediaItem.Builder()
@@ -146,14 +159,6 @@ class MediaControllerHolder @Inject constructor(
         )
         controller.prepare()
         controller.play()
-
-        // A new queue is a fresh start: the fader returns to centre and the key holds again.
-        // Moving *within* a queue keeps what was set — auto-advance, next, previous and tapping a
-        // queue row are all one continuous session, and a deck's fader does not spring back
-        // between records in a mix.
-        _tempoSlider.value = 0f
-        _keyLock.value = true
-        controller.playbackParameters = PlaybackParameters.DEFAULT
     }
 
     override fun play() = withController { it.play() }
