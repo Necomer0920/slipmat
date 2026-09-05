@@ -182,12 +182,56 @@ private const val EQ_SHORT_MAX = 32767f
  * shortcut and it is wrong wherever two bands overlap — which, at 1.15 octaves apart, is everywhere
  * that matters. The drawn curve would then promise more boost than the ear gets.
  */
-fun eqMagnitudeAt(gainsDb: FloatArray, frequencyHz: Float, sampleRate: Int): Float {
-    var magnitude = 1f
-    for (band in EQ_BANDS.indices) {
-        val gain = gainsDb.getOrNull(band) ?: 0f
-        magnitude *= peakingCoefficients(EQ_BANDS[band], gain, sampleRate)
-            .magnitudeAt(frequencyHz, sampleRate)
+fun eqMagnitudeAt(gainsDb: FloatArray, frequencyHz: Float, sampleRate: Int): Float =
+    eqMagnitude(designBands(gainsDb, sampleRate), frequencyHz, sampleRate)
+
+/** Lowest frequency the curve is drawn from. Below this there is nothing to see or hear. */
+const val CURVE_MIN_HZ = 20f
+
+/** Highest. Above this the band centres have run out and so, mostly, has hearing. */
+const val CURVE_MAX_HZ = 20_000f
+
+/**
+ * The cascade's response in decibels, sampled evenly on a **log** frequency axis.
+ *
+ * Log-spaced because that is how the curve is drawn and how frequency is heard: sampled linearly,
+ * the bottom four bands would share the leftmost few pixels.
+ *
+ * Designs each band once and reuses it across every point. The obvious version calls
+ * [eqMagnitudeAt] per point, which redesigns all eight bands per pixel column — hundreds of
+ * designs per frame while a finger is moving.
+ */
+fun eqCurveDb(gainsDb: FloatArray, sampleRate: Int, points: Int): FloatArray {
+    if (points <= 0) return FloatArray(0)
+    val bands = designBands(gainsDb, sampleRate)
+    val ratio = CURVE_MAX_HZ / CURVE_MIN_HZ
+
+    return FloatArray(points) { point ->
+        val fraction = if (points == 1) 0f else point.toFloat() / (points - 1)
+        val hz = CURVE_MIN_HZ * Math.pow(ratio.toDouble(), fraction.toDouble()).toFloat()
+        val magnitude = eqMagnitude(bands, hz, sampleRate)
+        (20.0 * Math.log10(magnitude.toDouble().coerceAtLeast(1e-6))).toFloat()
     }
+}
+
+/** Where a frequency sits along the drawn axis, 0f at [CURVE_MIN_HZ] and 1f at [CURVE_MAX_HZ]. */
+fun curveFractionFor(frequencyHz: Float): Float {
+    val ratio = CURVE_MAX_HZ / CURVE_MIN_HZ
+    val position = Math.log((frequencyHz / CURVE_MIN_HZ).toDouble()) / Math.log(ratio.toDouble())
+    return position.toFloat().coerceIn(0f, 1f)
+}
+
+private fun designBands(gainsDb: FloatArray, sampleRate: Int): Array<BiquadCoefficients> =
+    Array(EQ_BANDS.size) { band ->
+        peakingCoefficients(EQ_BANDS[band], gainsDb.getOrNull(band) ?: 0f, sampleRate)
+    }
+
+private fun eqMagnitude(
+    bands: Array<BiquadCoefficients>,
+    frequencyHz: Float,
+    sampleRate: Int,
+): Float {
+    var magnitude = 1f
+    for (band in bands) magnitude *= band.magnitudeAt(frequencyHz, sampleRate)
     return magnitude
 }

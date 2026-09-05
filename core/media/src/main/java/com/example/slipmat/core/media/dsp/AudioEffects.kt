@@ -40,6 +40,20 @@ class AudioEffects @Inject constructor() {
 }
 
 /**
+ * The EQ as the UI sees it.
+ *
+ * Gains are a `List<Float>`, not a `FloatArray`, on purpose: a data class holding an array compares
+ * by identity, so two states with identical gains would look different to Compose and every
+ * recomposition would redraw a curve that had not changed.
+ */
+data class EqState(
+    val enabled: Boolean = false,
+    val gainsDb: List<Float> = List(EQ_BANDS.size) { 0f },
+) {
+    fun gains(): FloatArray = FloatArray(EQ_BANDS.size) { gainsDb.getOrElse(it) { 0f } }
+}
+
+/**
  * The delay as the UI sees it.
  *
  * Mirrored rather than read back from the processor, for the same reason [FilterState] is: the

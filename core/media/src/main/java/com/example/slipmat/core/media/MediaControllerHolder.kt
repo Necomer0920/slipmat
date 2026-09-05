@@ -9,6 +9,7 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.util.UnstableApi
 import com.example.slipmat.core.media.dsp.AudioEffects
 import com.example.slipmat.core.media.dsp.DelayState
+import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import androidx.media3.common.Player
@@ -86,6 +87,10 @@ class MediaControllerHolder @Inject constructor(
         effects.delay.setFeedback(DelayState().feedback)
         effects.delay.setMix(DelayState().mix)
         _delayState.value = DelayState()
+
+        effects.eq.setEnabled(false)
+        effects.eq.setGains(EqState().gains())
+        _eqState.value = EqState()
     }
 
     override fun setDelayEnabled(enabled: Boolean) {
@@ -106,6 +111,21 @@ class MediaControllerHolder @Inject constructor(
     override fun setDelayMix(value: Float) {
         effects.delay.setMix(value)
         _delayState.value = _delayState.value.copy(mix = value)
+    }
+
+    private val _eqState = MutableStateFlow(EqState())
+    override val eqState: StateFlow<EqState> = _eqState.asStateFlow()
+
+    override fun setEqEnabled(enabled: Boolean) {
+        effects.eq.setEnabled(enabled)
+        _eqState.value = _eqState.value.copy(enabled = enabled)
+    }
+
+    override fun setEqGain(band: Int, gainDb: Float) {
+        effects.eq.setGain(band, gainDb)
+        // Read back rather than assumed: the processor clamps, and the curve must draw what the
+        // audio is actually doing.
+        _eqState.value = _eqState.value.copy(gainsDb = effects.eq.gains().toList())
     }
 
     override val sleepTimerState: StateFlow<SleepTimerState> = sleepTimer.state

@@ -5,6 +5,7 @@ import com.example.slipmat.core.data.settings.PlaybackSettings
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.dsp.DelayState
+import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.waveform.WaveformSource
@@ -87,6 +88,8 @@ class NowPlayingViewModel @Inject constructor(
 
     val delay: StateFlow<DelayState> = playback.delayState
 
+    val eq: StateFlow<EqState> = playback.eqState
+
     fun togglePlayPause() {
         if (state.value.isPlaying) playback.pause() else playback.play()
     }
@@ -119,6 +122,10 @@ class NowPlayingViewModel @Inject constructor(
     fun startSleepTimer(minutes: Int) = playback.startSleepTimer(minutes * 60_000L)
 
     fun cancelSleepTimer() = playback.cancelSleepTimer()
+
+    fun onEqEnabledChange(enabled: Boolean) = playback.setEqEnabled(enabled)
+
+    fun onEqGainChange(band: Int, gainDb: Float) = playback.setEqGain(band, gainDb)
 
     fun onDelayEnabledChange(enabled: Boolean) = playback.setDelayEnabled(enabled)
 

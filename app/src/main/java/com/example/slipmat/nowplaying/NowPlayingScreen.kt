@@ -51,6 +51,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.dsp.DelayState
+import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.RepeatMode
@@ -88,6 +89,8 @@ data class NowPlayingActions(
     val onDelayTimeChange: (Float) -> Unit = {},
     val onDelayFeedbackChange: (Float) -> Unit = {},
     val onDelayMixChange: (Float) -> Unit = {},
+    val onEqEnabledChange: (Boolean) -> Unit = {},
+    val onEqGainChange: (Int, Float) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -103,6 +106,7 @@ fun NowPlayingScreen(
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val delay by viewModel.delay.collectAsStateWithLifecycle()
+    val eq by viewModel.eq.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
@@ -113,6 +117,7 @@ fun NowPlayingScreen(
         waveform = waveform,
         filter = filter,
         delay = delay,
+        eq = eq,
         keyLock = keyLock,
         pitchRange = pitchRange,
         actions = NowPlayingActions(
@@ -140,6 +145,8 @@ fun NowPlayingScreen(
             onDelayTimeChange = viewModel::onDelayTimeChange,
             onDelayFeedbackChange = viewModel::onDelayFeedbackChange,
             onDelayMixChange = viewModel::onDelayMixChange,
+            onEqEnabledChange = viewModel::onEqEnabledChange,
+            onEqGainChange = viewModel::onEqGainChange,
         ),
         modifier = modifier,
     )
@@ -156,6 +163,7 @@ internal fun NowPlayingContent(
     waveform: FloatArray? = null,
     filter: FilterState = FilterState(),
     delay: DelayState = DelayState(),
+    eq: EqState = EqState(),
     keyLock: Boolean = true,
     pitchRange: PitchRange = PitchRange.Narrow,
     sourceBpm: Float? = null,
@@ -233,6 +241,11 @@ internal fun NowPlayingContent(
                 onTimeChange = actions.onDelayTimeChange,
                 onFeedbackChange = actions.onDelayFeedbackChange,
                 onMixChange = actions.onDelayMixChange,
+            )
+            EqControls(
+                state = eq,
+                onEnabledChange = actions.onEqEnabledChange,
+                onGainChange = actions.onEqGainChange,
             )
             SleepTimerControls(
                 state = sleepTimer,

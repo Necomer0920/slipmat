@@ -1,6 +1,7 @@
 package com.example.slipmat.core.media
 
 import com.example.slipmat.core.media.dsp.DelayState
+import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import kotlinx.coroutines.flow.StateFlow
@@ -116,4 +117,11 @@ interface PlaybackController {
     fun setDelayFeedback(value: Float)
 
     fun setDelayMix(value: Float)
+
+    /** EQ state, mirrored for the UI. */
+    val eqState: StateFlow<EqState>
+
+    fun setEqEnabled(enabled: Boolean)
+
+    fun setEqGain(band: Int, gainDb: Float)
 }

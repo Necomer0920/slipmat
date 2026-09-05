@@ -49,6 +49,38 @@ class BandEqProcessorTest {
     }
 
     @Test
+    fun `the drawn curve is the same function as the per-frequency one`() {
+        // eqCurveDb designs each band once and reuses it; eqMagnitudeAt designs per call. If those
+        // ever diverge, the curve stops describing the audio and nothing else would notice.
+        val gains = FloatArray(EQ_BANDS.size).also { it[1] = 8f; it[2] = -5f; it[6] = 11f }
+        val points = 64
+        val curve = eqCurveDb(gains, RATE, points)
+        val ratio = CURVE_MAX_HZ / CURVE_MIN_HZ
+
+        for (point in 0 until points) {
+            val hz = CURVE_MIN_HZ *
+                Math.pow(ratio.toDouble(), point.toDouble() / (points - 1)).toFloat()
+            assertEquals("$hz Hz", eqMagnitudeAt(gains, hz, RATE).toDb(), curve[point], 0.01f)
+        }
+    }
+
+    @Test
+    fun `the drawn axis runs from one end of the range to the other`() {
+        assertEquals(0f, curveFractionFor(CURVE_MIN_HZ), 0.001f)
+        assertEquals(1f, curveFractionFor(CURVE_MAX_HZ), 0.001f)
+        // Log axis: the geometric midpoint sits halfway across, not the arithmetic one.
+        assertEquals(0.5f, curveFractionFor(sqrt(CURVE_MIN_HZ * CURVE_MAX_HZ)), 0.001f)
+    }
+
+    @Test
+    fun `every band centre lands somewhere on the drawn axis`() {
+        for (hz in EQ_BANDS) {
+            val fraction = curveFractionFor(hz)
+            assertTrue("$hz Hz sits at $fraction", fraction > 0f && fraction < 1f)
+        }
+    }
+
+    @Test
     fun `a flat EQ is a straight wire at every band centre`() {
         val flat = FloatArray(EQ_BANDS.size)
 
