@@ -27,3 +27,4 @@ rootProject.name = "Slipmat"
 include(":app")
 include(":core:data")
 include(":core:media")
+include(":benchmark")

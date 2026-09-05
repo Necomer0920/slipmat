@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lets the shell profile a non-debuggable build, which macrobenchmark needs on API 29+.
+
+  Scoped to the benchmark variant rather than the main manifest on purpose: it grants shell
+  profiling access, and there is no reason for a release build to carry it.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <profileable android:shell="true" tools:targetApi="29"
+            xmlns:tools="http://schemas.android.com/tools" />
+    </application>
+</manifest>

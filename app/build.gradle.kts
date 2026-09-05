@@ -22,6 +22,16 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        // Benchmarking a debug build measures the debugger, not the app: no JIT profile, extra
+        // checks, and none of the release optimisations. This is release, signed with the debug key
+        // so it can be installed without a keystore.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
 
     buildFeatures {
