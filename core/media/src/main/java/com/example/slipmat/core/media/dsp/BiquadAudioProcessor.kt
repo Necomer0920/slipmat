@@ -49,7 +49,10 @@ class BiquadAudioProcessor : BaseAudioProcessor() {
     private var y2: FloatArray = FloatArray(0)
 
     fun setEnabled(enabled: Boolean) {
+        if (this.enabled == enabled) return
         this.enabled = enabled
+        // Stale filter memory would crack audibly when the filter is switched back on.
+        clearMemory()
     }
 
     fun setCutoff(hz: Float) {
@@ -86,7 +89,16 @@ class BiquadAudioProcessor : BaseAudioProcessor() {
         return inputAudioFormat
     }
 
-    override fun isActive(): Boolean = enabled && super.isActive()
+    /**
+     * Always active for a supported format — deliberately **not** gated on [enabled].
+     *
+     * Media3 queries `isActive` when it *configures* the chain, not per buffer, so a processor's
+     * membership is fixed at track start. Gating this on a runtime flag made the filter depend on
+     * whatever the switch happened to be at the moment the sink was configured: on at track start
+     * meant it could never be turned off, off at track start meant it could never be turned on.
+     * Nothing errored either way. Enablement is handled per buffer in [queueInput] instead.
+     */
+    override fun isActive(): Boolean = super.isActive()
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         // Bytes, not frames — output is the same size as input, sample for sample.
@@ -95,6 +107,14 @@ class BiquadAudioProcessor : BaseAudioProcessor() {
 
         val output = replaceOutputBuffer(byteCount).order(ByteOrder.nativeOrder())
         val input = inputBuffer.order(ByteOrder.nativeOrder())
+
+        // Read once per buffer, so a toggle mid-buffer cannot half-filter it.
+        if (!enabled) {
+            output.put(input)
+            inputBuffer.position(inputBuffer.limit())
+            output.flip()
+            return
+        }
 
         val c = coefficients
         var channel = 0
@@ -123,6 +143,10 @@ class BiquadAudioProcessor : BaseAudioProcessor() {
 
     /** Clears filter memory, so a seek does not smear the previous position into the new one. */
     override fun onFlush() {
+        clearMemory()
+    }
+
+    private fun clearMemory() {
         x1.fill(0f)
         x2.fill(0f)
         y1.fill(0f)
