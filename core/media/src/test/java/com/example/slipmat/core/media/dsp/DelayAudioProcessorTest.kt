@@ -108,6 +108,28 @@ class DelayAudioProcessorTest {
     }
 
     @Test
+    fun `fully dry, the echo is not in the output at all`() {
+        val processor = configured(enabled = true)
+        processor.setFeedback(0.5f)
+        processor.setMix(0f)
+
+        val output = processor.process(impulseInLeft())
+
+        assertArrayEquals(shortsOf(impulseInLeft()), output)
+    }
+
+    @Test
+    fun `fully wet, the dry signal is gone`() {
+        val processor = configured(enabled = true)
+        processor.setMix(1f)
+
+        val output = processor.process(impulseInLeft())
+
+        assertEquals("dry signal survived a fully wet mix", 0.toShort(), output[0])
+        assertEquals("echo should be at full level", IMPULSE, output[DELAY_FRAMES * CHANNELS])
+    }
+
+    @Test
     fun `switched off, it passes audio through untouched`() {
         val processor = configured(enabled = false)
 

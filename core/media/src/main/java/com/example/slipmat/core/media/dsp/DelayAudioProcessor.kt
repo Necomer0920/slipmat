@@ -25,6 +25,9 @@ const val DEFAULT_DELAY_MS = 500f
  */
 const val MAX_FEEDBACK = 0.9f
 
+/** An even blend: obvious, and the only mix that is equally wrong for every track. */
+const val DEFAULT_MIX = 0.5f
+
 /**
  * An echo in ExoPlayer's audio pipeline.
  *
@@ -48,6 +51,10 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
     @Volatile
     private var feedback: Float = 0f
+
+    /** 0 is dry only, 1 is wet only. */
+    @Volatile
+    private var mix: Float = DEFAULT_MIX
 
     private var sampleRate: Int = C.RATE_UNSET_INT
     private var channelCount: Int = 0
@@ -79,6 +86,10 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
     fun setFeedback(value: Float) {
         feedback = value.coerceIn(0f, MAX_FEEDBACK)
+    }
+
+    fun setMix(value: Float) {
+        mix = value.coerceIn(0f, 1f)
     }
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -119,6 +130,8 @@ class DelayAudioProcessor : BaseAudioProcessor() {
         val delayFrames = framesFor(delayMs, sampleRate).coerceIn(1, lineFrames - 1)
         val fb = feedback
         val dryGain = 1f - fb
+        val wetMix = mix
+        val dryMix = 1f - wetMix
         val frameBytes = channelCount * 2
 
         while (input.remaining() >= frameBytes) {
@@ -138,7 +151,7 @@ class DelayAudioProcessor : BaseAudioProcessor() {
                 // amount the tail is fed back holds the steady state at exactly the input level,
                 // for any feedback value, without a limiter deciding how it sounds.
                 line[writeBase + channel] = dryGain * dry + fb * wet
-                output.putShort(mixDown(dry, wet))
+                output.putShort(mixDown(dry, wet, dryMix, wetMix))
 
                 channel++
             }
@@ -176,10 +189,15 @@ internal fun framesFor(ms: Float, sampleRate: Int): Int =
     if (sampleRate <= 0) 0 else (ms * sampleRate / 1000f + 0.5f).toInt()
 
 /**
- * Half dry, half wet.
+ * Crossfades dry against wet.
  *
- * Halving rather than summing: two full-scale signals added together clip, and a delay that only
- * sounds right on quiet material is not a delay. The mix becomes adjustable in task 6.11.
+ * A crossfade rather than a sum: two full-scale signals added together clip, and a delay that only
+ * sounds right on quiet material is not a delay. Linear rather than equal-power, because the wet
+ * signal here *is* the dry signal a moment ago — correlated material, where an equal-power curve
+ * would push the middle of the control 3 dB loud.
+ *
+ * The clamp is a backstop. Both gains sum to 1 and the line is bounded at the input level, so it
+ * has nothing to do unless something upstream hands us a full-scale sample.
  */
-private fun mixDown(dry: Float, wet: Float): Short =
-    ((dry + wet) * 0.5f).coerceIn(-32768f, 32767f).toInt().toShort()
+private fun mixDown(dry: Float, wet: Float, dryMix: Float, wetMix: Float): Short =
+    (dry * dryMix + wet * wetMix).coerceIn(-32768f, 32767f).toInt().toShort()
