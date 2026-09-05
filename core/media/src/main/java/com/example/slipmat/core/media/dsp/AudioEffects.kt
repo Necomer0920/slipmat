@@ -17,10 +17,20 @@ import javax.inject.Singleton
 @Singleton
 class AudioEffects @Inject constructor() {
 
+    val delay = DelayAudioProcessor()
+
     val filter = BiquadAudioProcessor()
 
-    /** Order matters: this is the signal path, left to right. */
-    fun processors(): Array<AudioProcessor> = arrayOf(filter)
+    /**
+     * The signal path, left to right — and the order is a decision about how the app plays, not
+     * an incidental array order.
+     *
+     * Delay first, filter last, so the filter governs everything the listener hears including the
+     * tails: cut the track out, leave the echo ringing, and sweep the whole wash away. The other
+     * order freezes each echo with the tone it was captured at, and sweeping the filter then leaves
+     * the existing repeats untouched, which reads as the filter being broken.
+     */
+    fun processors(): Array<AudioProcessor> = arrayOf(delay, filter)
 }
 
 /**
