@@ -29,6 +29,16 @@ const val MAX_FEEDBACK = 0.9f
 const val DEFAULT_MIX = 0.5f
 
 /**
+ * How long the read head takes to reach a new delay length.
+ *
+ * Jumping straight there splices the line and clicks. Sliding there drags the read head at a
+ * different rate from the write head, which bends the pitch of whatever is already in the line —
+ * the sound of pulling a tape delay's time control, and the reason the control is worth sweeping
+ * rather than just setting.
+ */
+private const val SLEW_MS = 60f
+
+/**
  * An echo in ExoPlayer's audio pipeline.
  *
  * **Runs on the audio thread**, under the same rules as [BiquadAudioProcessor]: no allocation in
@@ -73,6 +83,12 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
     private var writeFrame: Int = 0
 
+    /** Where the read head actually is, in frames behind the write head. Negative means unset. */
+    private var readBehind: Float = UNSET
+
+    /** Fraction of the remaining distance covered per frame. */
+    private var slewPerFrame: Float = 1f
+
     fun setEnabled(enabled: Boolean) {
         if (this.enabled == enabled) return
         this.enabled = enabled
@@ -101,6 +117,7 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
         // One spare frame so the longest delay still reads a frame written a full lap ago rather
         // than the one about to be overwritten.
+        slewPerFrame = (1000f / (SLEW_MS * sampleRate)).coerceIn(MIN_SLEW, 1f)
         lineFrames = framesFor(MAX_DELAY_MS, sampleRate) + 1
         val required = lineFrames * channelCount
         if (line.size < required) line = FloatArray(required)
@@ -127,7 +144,9 @@ class DelayAudioProcessor : BaseAudioProcessor() {
         }
 
         // Read once per buffer: a delay length that changed mid-buffer would splice the line.
-        val delayFrames = framesFor(delayMs, sampleRate).coerceIn(1, lineFrames - 1)
+        val delayFrames = framesFor(delayMs, sampleRate).coerceIn(1, lineFrames - 1).toFloat()
+        // First buffer after a flush starts where it was asked to, rather than sliding up from zero.
+        if (readBehind < 0f) readBehind = delayFrames
         val fb = feedback
         val dryGain = 1f - fb
         val wetMix = mix
@@ -135,15 +154,23 @@ class DelayAudioProcessor : BaseAudioProcessor() {
         val frameBytes = channelCount * 2
 
         while (input.remaining() >= frameBytes) {
-            var readFrame = writeFrame - delayFrames
-            if (readFrame < 0) readFrame += lineFrames
+            readBehind += (delayFrames - readBehind) * slewPerFrame
+
+            var readPosition = writeFrame - readBehind
+            if (readPosition < 0f) readPosition += lineFrames
+            val readFrame = readPosition.toInt()
+            val fraction = readPosition - readFrame
+            // The head sits between two frames while it is moving, so read both and interpolate.
+            val nextFrame = if (readFrame + 1 == lineFrames) 0 else readFrame + 1
             val readBase = readFrame * channelCount
+            val nextBase = nextFrame * channelCount
             val writeBase = writeFrame * channelCount
 
             var channel = 0
             while (channel < channelCount) {
                 val dry = input.short.toFloat()
-                val wet = line[readBase + channel]
+                val wet = line[readBase + channel] +
+                    fraction * (line[nextBase + channel] - line[readBase + channel])
 
                 // Normalised feedback. The obvious `dry + wet * fb` converges to `dry / (1 - fb)`
                 // on sustained material — twenty times the input at the top of the range — so it
@@ -167,12 +194,14 @@ class DelayAudioProcessor : BaseAudioProcessor() {
     /** Clears the line, so a seek does not echo the previous position into the new one. */
     override fun onFlush() {
         writeFrame = 0
+        readBehind = UNSET
         clearLine()
     }
 
     private fun clearLine() {
         line.fill(0f)
         writeFrame = 0
+        readBehind = UNSET
     }
 
     override fun onReset() {
@@ -180,9 +209,15 @@ class DelayAudioProcessor : BaseAudioProcessor() {
         channelCount = 0
         lineFrames = 0
         writeFrame = 0
+        readBehind = UNSET
         line = FloatArray(0)
     }
 }
+
+private const val UNSET = -1f
+
+/** Slow enough that even a 192 kHz stream still slews, rather than rounding to a standstill. */
+private const val MIN_SLEW = 1e-6f
 
 /** Delay length in frames. Rounded, not truncated, so 500 ms is 500 ms rather than a sample short. */
 internal fun framesFor(ms: Float, sampleRate: Int): Int =

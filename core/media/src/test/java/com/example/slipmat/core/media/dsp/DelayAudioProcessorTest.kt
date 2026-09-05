@@ -18,6 +18,14 @@ private const val DELAY_MS = 20f
 private const val DELAY_FRAMES = 882
 
 private const val AMPLITUDE = 20_000
+
+/**
+ * Exactly five cycles per buffer (44100 / 2000 * 5), so consecutive buffers join without a seam.
+ *
+ * A round 100 Hz does not divide evenly and leaves a step at every buffer boundary, which then
+ * shows up in the output looking exactly like the splice these tests are trying to detect.
+ */
+private const val TONE_HZ = 110.25
 private const val IMPULSE: Short = 20_000
 private const val FRAMES = 2_000
 
@@ -130,6 +138,27 @@ class DelayAudioProcessorTest {
     }
 
     @Test
+    fun `moving the delay time slides the read head instead of splicing it`() {
+        val processor = configured(enabled = true)
+        processor.setMix(1f) // wet only, so the line is all that is audible
+        processor.process(loudTone())
+        val before = processor.process(loudTone())
+
+        processor.setDelayMs(40f)
+        val after = processor.process(loudTone())
+
+        // Spanning the join deliberately: the read head moves on the first frame of the new
+        // buffer, so a scan that starts there steps straight over the very discontinuity it is
+        // looking for and passes whatever it is given.
+        val joined = before + after
+        // The tone moves at most ~314 per sample. A spliced line jumps by tens of thousands.
+        val biggestStep = (CHANNELS until joined.size).maxOf {
+            kotlin.math.abs(joined[it] - joined[it - CHANNELS])
+        }
+        assertTrue("read head jumped by $biggestStep", biggestStep < 2_000)
+    }
+
+    @Test
     fun `switched off, it passes audio through untouched`() {
         val processor = configured(enabled = false)
 
@@ -208,11 +237,11 @@ private fun impulseInLeft(): ByteBuffer {
     return buffer.flip() as ByteBuffer
 }
 
-/** Full-level low tone: at 20 ms the echoes come back in phase and add, which is the worst case. */
+/** Full-level low tone, seamless across buffers so a boundary cannot look like a splice. */
 private fun loudTone(): ByteBuffer {
     val buffer = ByteBuffer.allocate(FRAMES * CHANNELS * 2).order(ByteOrder.nativeOrder())
     for (frame in 0 until FRAMES) {
-        val sample = (kotlin.math.sin(2.0 * Math.PI * 100.0 * frame / RATE) * AMPLITUDE).toInt().toShort()
+        val sample = (kotlin.math.sin(2.0 * Math.PI * TONE_HZ * frame / RATE) * AMPLITUDE).toInt().toShort()
         repeat(CHANNELS) { buffer.putShort(sample) }
     }
     return buffer.flip() as ByteBuffer
