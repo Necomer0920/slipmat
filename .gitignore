@@ -7,7 +7,9 @@
 # them out means a diff only ever shows real changes.
 /.idea/
 .DS_Store
-/build
+# Any module's build output, not just the root's. `/build` matched only the root, so a new
+# module without its own .gitignore quietly committed 498 files of build output.
+build/
 /captures
 .externalNativeBuild
 .cxx

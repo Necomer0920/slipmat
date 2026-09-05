@@ -1,7 +1,0 @@
-com.example.slipmat.benchmark-pngs-0 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\build\generated\res\pngs\benchmark
-com.example.slipmat.benchmark-updated_navigation_xml-1 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\build\generated\updated_navigation_xml\benchmark
-com.example.slipmat.benchmark-packageBenchmarkResources-2 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\build\intermediates\incremental\benchmark\packageBenchmarkResources\merged.dir
-com.example.slipmat.benchmark-packageBenchmarkResources-3 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\build\intermediates\incremental\benchmark\packageBenchmarkResources\stripped.dir
-com.example.slipmat.benchmark-benchmark-4 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\build\intermediates\merged_res\benchmark\mergeBenchmarkResources
-com.example.slipmat.benchmark-benchmark-5 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\src\benchmark\res
-com.example.slipmat.benchmark-main-6 C:\Users\yolos\AndroidStudioProjects\Slipmat\benchmark\src\main\res
