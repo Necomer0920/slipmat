@@ -41,7 +41,7 @@ class ProcessorAllocationTest {
     fun `the filter allocates nothing while processing`() {
         val filter = BiquadAudioProcessor().apply {
             configure(format())
-            flush()
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
             setEnabled(true)
             setCutoff(800f)
         }
@@ -54,7 +54,7 @@ class ProcessorAllocationTest {
         // The bypass path copies buffer to buffer, which is exactly where an easy `ByteArray` goes.
         val filter = BiquadAudioProcessor().apply {
             configure(format())
-            flush()
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
             setEnabled(false)
         }
 
@@ -65,7 +65,7 @@ class ProcessorAllocationTest {
     fun `the delay allocates nothing while processing`() {
         val delay = DelayAudioProcessor().apply {
             configure(format())
-            flush()
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
             setEnabled(true)
             setFeedback(0.5f)
         }
@@ -79,7 +79,7 @@ class ProcessorAllocationTest {
         // arithmetic is the part this cannot speak to — that is a device check.
         val eq = BandEqProcessor().apply {
             configure(format())
-            flush()
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
             setEnabled(true)
             setGains(FloatArray(EQ_BANDS.size) { band -> if (band % 2 == 0) 9f else -9f })
         }
@@ -91,14 +91,14 @@ class ProcessorAllocationTest {
     fun `the whole chain together allocates nothing`() {
         // The order AudioEffects actually installs them in, so this is the real signal path.
         val eq = BandEqProcessor().apply {
-            configure(format()); flush(); setEnabled(true)
+            configure(format()); flush(AudioProcessor.StreamMetadata.DEFAULT); setEnabled(true)
             setGains(FloatArray(EQ_BANDS.size) { 6f })
         }
         val delay = DelayAudioProcessor().apply {
-            configure(format()); flush(); setEnabled(true); setFeedback(0.5f)
+            configure(format()); flush(AudioProcessor.StreamMetadata.DEFAULT); setEnabled(true); setFeedback(0.5f)
         }
         val filter = BiquadAudioProcessor().apply {
-            configure(format()); flush(); setEnabled(true); setCutoff(4_000f)
+            configure(format()); flush(AudioProcessor.StreamMetadata.DEFAULT); setEnabled(true); setCutoff(4_000f)
         }
 
         assertNoAllocation("chain") { buffer ->
@@ -115,12 +115,12 @@ class ProcessorAllocationTest {
         // threads, and the tempting way to hand a new value across is to allocate a small object.
         val filter = BiquadAudioProcessor().apply {
             configure(format())
-            flush()
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
             setEnabled(true)
         }
         val delay = DelayAudioProcessor().apply {
             configure(format())
-            flush()
+            flush(AudioProcessor.StreamMetadata.DEFAULT)
             setEnabled(true)
         }
         var step = 0

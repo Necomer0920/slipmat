@@ -93,7 +93,7 @@ class BiquadAudioProcessorTest {
 @UnstableApi
 private fun configured(enabled: Boolean): BiquadAudioProcessor = BiquadAudioProcessor().apply {
     configure(AudioProcessor.AudioFormat(RATE, CHANNELS, C.ENCODING_PCM_16BIT))
-    flush()
+    flush(AudioProcessor.StreamMetadata.DEFAULT)
     setEnabled(enabled)
 }
 

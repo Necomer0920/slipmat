@@ -150,7 +150,7 @@ class BandEqProcessor : BaseAudioProcessor() {
         output.flip()
     }
 
-    override fun onFlush() {
+    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         clearMemory()
     }
 

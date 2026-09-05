@@ -142,7 +142,7 @@ class BiquadAudioProcessor : BaseAudioProcessor() {
     }
 
     /** Clears filter memory, so a seek does not smear the previous position into the new one. */
-    override fun onFlush() {
+    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         clearMemory()
     }
 

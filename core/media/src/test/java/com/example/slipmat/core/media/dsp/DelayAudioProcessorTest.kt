@@ -185,6 +185,10 @@ class DelayAudioProcessorTest {
         val processor = configured(enabled = true)
         processor.process(impulseInLeft())
 
+        // Deliberately the deprecated no-arg flush(). Media3 deprecated it in favour of the
+        // StreamMetadata overload, and this asserts the old call still routes to the new onFlush -
+        // if that ever stops being true, filter memory survives a seek and nothing else notices.
+        @Suppress("DEPRECATION")
         processor.flush()
         val output = processor.process(silence())
 
@@ -214,7 +218,7 @@ class DelayAudioProcessorTest {
 @UnstableApi
 private fun configured(enabled: Boolean): DelayAudioProcessor = DelayAudioProcessor().apply {
     configure(AudioProcessor.AudioFormat(RATE, CHANNELS, C.ENCODING_PCM_16BIT))
-    flush()
+    flush(AudioProcessor.StreamMetadata.DEFAULT)
     setEnabled(enabled)
     setDelayMs(DELAY_MS)
 }

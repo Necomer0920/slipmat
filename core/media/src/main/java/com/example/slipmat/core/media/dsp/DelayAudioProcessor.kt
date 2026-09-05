@@ -192,7 +192,7 @@ class DelayAudioProcessor : BaseAudioProcessor() {
     }
 
     /** Clears the line, so a seek does not echo the previous position into the new one. */
-    override fun onFlush() {
+    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         writeFrame = 0
         readBehind = UNSET
         clearLine()

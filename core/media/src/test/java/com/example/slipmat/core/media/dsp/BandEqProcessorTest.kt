@@ -169,7 +169,7 @@ class BandEqProcessorTest {
 @UnstableApi
 private fun configured(enabled: Boolean): BandEqProcessor = BandEqProcessor().apply {
     configure(AudioProcessor.AudioFormat(RATE, CHANNELS, C.ENCODING_PCM_16BIT))
-    flush()
+    flush(AudioProcessor.StreamMetadata.DEFAULT)
     setEnabled(enabled)
 }
 
