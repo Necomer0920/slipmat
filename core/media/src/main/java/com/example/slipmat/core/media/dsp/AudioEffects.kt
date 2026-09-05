@@ -34,6 +34,39 @@ class AudioEffects @Inject constructor() {
 }
 
 /**
+ * The delay as the UI sees it.
+ *
+ * Mirrored rather than read back from the processor, for the same reason [FilterState] is: the
+ * processor's fields are `@Volatile` singles on the audio thread, not something a recomposition
+ * should poll.
+ */
+data class DelayState(
+    val enabled: Boolean = false,
+    val timeMs: Float = DEFAULT_DELAY_MS,
+    val feedback: Float = DEFAULT_FEEDBACK,
+    val mix: Float = DEFAULT_MIX,
+) {
+    /**
+     * Time as 0f..1f, linear in milliseconds.
+     *
+     * Linear, unlike the filter's cutoff: a delay is set by note length, and the useful musical
+     * values are spread evenly through the range rather than piled into the bottom octave.
+     */
+    val timeSlider: Float get() = (timeMs - MIN_DELAY_MS) / (MAX_DELAY_MS - MIN_DELAY_MS)
+
+    /** Feedback as 0f..1f of the usable range, so the top of the slider is the ceiling. */
+    val feedbackSlider: Float get() = feedback / MAX_FEEDBACK
+}
+
+/** Enough repeats to hear it as an effect rather than a doubling. */
+const val DEFAULT_FEEDBACK = 0.35f
+
+fun sliderToDelayMs(position: Float): Float =
+    MIN_DELAY_MS + position.coerceIn(0f, 1f) * (MAX_DELAY_MS - MIN_DELAY_MS)
+
+fun sliderToFeedback(position: Float): Float = position.coerceIn(0f, 1f) * MAX_FEEDBACK
+
+/**
  * The filter as the UI sees it.
  *
  * Mirrored rather than read back from the processor: the processor lives on the audio thread and

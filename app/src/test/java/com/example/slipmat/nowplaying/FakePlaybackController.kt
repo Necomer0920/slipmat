@@ -6,6 +6,7 @@ import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.speedPitchFor
+import com.example.slipmat.core.media.dsp.DelayState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.SleepTimerState
@@ -28,6 +29,9 @@ class FakePlaybackController : PlaybackController {
 
     private val _filterState = MutableStateFlow(FilterState())
     override val filterState: StateFlow<FilterState> = _filterState
+
+    private val _delayState = MutableStateFlow(DelayState())
+    override val delayState: StateFlow<DelayState> = _delayState
 
     private val _tempoSlider = MutableStateFlow(0f)
     override val tempoSlider: StateFlow<Float> = _tempoSlider
@@ -68,6 +72,10 @@ class FakePlaybackController : PlaybackController {
     override fun setFilterEnabled(enabled: Boolean) { calls += "filterEnabled($enabled)"; _filterState.value = _filterState.value.copy(enabled = enabled) }
     override fun setFilterCutoff(hz: Float) { calls += "cutoff($hz)"; _filterState.value = _filterState.value.copy(cutoffHz = hz) }
     override fun setFilterMode(mode: FilterMode) { calls += "filterMode($mode)"; _filterState.value = _filterState.value.copy(mode = mode) }
+    override fun setDelayEnabled(enabled: Boolean) { calls += "delayEnabled($enabled)"; _delayState.value = _delayState.value.copy(enabled = enabled) }
+    override fun setDelayTime(ms: Float) { calls += "delayTime($ms)"; _delayState.value = _delayState.value.copy(timeMs = ms) }
+    override fun setDelayFeedback(value: Float) { calls += "delayFeedback($value)"; _delayState.value = _delayState.value.copy(feedback = value) }
+    override fun setDelayMix(value: Float) { calls += "delayMix($value)"; _delayState.value = _delayState.value.copy(mix = value) }
 }
 
 /** In-memory settings, so the view model can be tested without a Context or DataStore. */

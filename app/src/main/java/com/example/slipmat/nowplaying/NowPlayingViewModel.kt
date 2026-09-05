@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.example.slipmat.core.data.settings.PlaybackSettings
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
+import com.example.slipmat.core.media.dsp.DelayState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.waveform.WaveformSource
@@ -84,6 +85,8 @@ class NowPlayingViewModel @Inject constructor(
 
     val filter: StateFlow<FilterState> = playback.filterState
 
+    val delay: StateFlow<DelayState> = playback.delayState
+
     fun togglePlayPause() {
         if (state.value.isPlaying) playback.pause() else playback.play()
     }
@@ -116,6 +119,21 @@ class NowPlayingViewModel @Inject constructor(
     fun startSleepTimer(minutes: Int) = playback.startSleepTimer(minutes * 60_000L)
 
     fun cancelSleepTimer() = playback.cancelSleepTimer()
+
+    fun onDelayEnabledChange(enabled: Boolean) = playback.setDelayEnabled(enabled)
+
+    /**
+     * Not rate-limited, unlike the filter cutoff.
+     *
+     * Each of these is one volatile write that the audio thread reads once per buffer. The
+     * cutoff is throttled because every change redesigns the filter; there is nothing to
+     * redesign here, so throttling would only add lag to a control meant to be swept.
+     */
+    fun onDelayTimeChange(ms: Float) = playback.setDelayTime(ms)
+
+    fun onDelayFeedbackChange(value: Float) = playback.setDelayFeedback(value)
+
+    fun onDelayMixChange(value: Float) = playback.setDelayMix(value)
 
     fun onFilterEnabledChange(enabled: Boolean) = playback.setFilterEnabled(enabled)
 

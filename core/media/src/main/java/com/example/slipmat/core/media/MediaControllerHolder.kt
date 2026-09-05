@@ -8,6 +8,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.util.UnstableApi
 import com.example.slipmat.core.media.dsp.AudioEffects
+import com.example.slipmat.core.media.dsp.DelayState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import androidx.media3.common.Player
@@ -63,6 +64,29 @@ class MediaControllerHolder @Inject constructor(
     override fun setFilterMode(mode: FilterMode) {
         effects.filter.setMode(mode)
         _filterState.value = _filterState.value.copy(mode = mode)
+    }
+
+    private val _delayState = MutableStateFlow(DelayState())
+    override val delayState: StateFlow<DelayState> = _delayState.asStateFlow()
+
+    override fun setDelayEnabled(enabled: Boolean) {
+        effects.delay.setEnabled(enabled)
+        _delayState.value = _delayState.value.copy(enabled = enabled)
+    }
+
+    override fun setDelayTime(ms: Float) {
+        effects.delay.setDelayMs(ms)
+        _delayState.value = _delayState.value.copy(timeMs = ms)
+    }
+
+    override fun setDelayFeedback(value: Float) {
+        effects.delay.setFeedback(value)
+        _delayState.value = _delayState.value.copy(feedback = value)
+    }
+
+    override fun setDelayMix(value: Float) {
+        effects.delay.setMix(value)
+        _delayState.value = _delayState.value.copy(mix = value)
     }
 
     override val sleepTimerState: StateFlow<SleepTimerState> = sleepTimer.state

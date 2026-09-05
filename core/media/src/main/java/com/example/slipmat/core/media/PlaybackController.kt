@@ -1,5 +1,6 @@
 package com.example.slipmat.core.media
 
+import com.example.slipmat.core.media.dsp.DelayState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import kotlinx.coroutines.flow.StateFlow
@@ -104,4 +105,15 @@ interface PlaybackController {
     fun setFilterCutoff(hz: Float)
 
     fun setFilterMode(mode: FilterMode)
+
+    /** Delay state, mirrored for the UI. */
+    val delayState: StateFlow<DelayState>
+
+    fun setDelayEnabled(enabled: Boolean)
+
+    fun setDelayTime(ms: Float)
+
+    fun setDelayFeedback(value: Float)
+
+    fun setDelayMix(value: Float)
 }

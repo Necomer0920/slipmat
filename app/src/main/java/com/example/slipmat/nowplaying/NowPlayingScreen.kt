@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
+import com.example.slipmat.core.media.dsp.DelayState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.RepeatMode
@@ -83,6 +84,10 @@ data class NowPlayingActions(
     val onFilterEnabledChange: (Boolean) -> Unit = {},
     val onFilterCutoffChange: (Float) -> Unit = {},
     val onFilterModeChange: (FilterMode) -> Unit = {},
+    val onDelayEnabledChange: (Boolean) -> Unit = {},
+    val onDelayTimeChange: (Float) -> Unit = {},
+    val onDelayFeedbackChange: (Float) -> Unit = {},
+    val onDelayMixChange: (Float) -> Unit = {},
 )
 
 @Composable
@@ -97,6 +102,7 @@ fun NowPlayingScreen(
     val sliderValue by viewModel.sliderValue.collectAsStateWithLifecycle()
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val delay by viewModel.delay.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
@@ -106,6 +112,7 @@ fun NowPlayingScreen(
         sliderValue = sliderValue,
         waveform = waveform,
         filter = filter,
+        delay = delay,
         keyLock = keyLock,
         pitchRange = pitchRange,
         actions = NowPlayingActions(
@@ -129,6 +136,10 @@ fun NowPlayingScreen(
             onFilterEnabledChange = viewModel::onFilterEnabledChange,
             onFilterCutoffChange = viewModel::onFilterCutoffChange,
             onFilterModeChange = viewModel::onFilterModeChange,
+            onDelayEnabledChange = viewModel::onDelayEnabledChange,
+            onDelayTimeChange = viewModel::onDelayTimeChange,
+            onDelayFeedbackChange = viewModel::onDelayFeedbackChange,
+            onDelayMixChange = viewModel::onDelayMixChange,
         ),
         modifier = modifier,
     )
@@ -144,6 +155,7 @@ internal fun NowPlayingContent(
     sliderValue: Float = 0f,
     waveform: FloatArray? = null,
     filter: FilterState = FilterState(),
+    delay: DelayState = DelayState(),
     keyLock: Boolean = true,
     pitchRange: PitchRange = PitchRange.Narrow,
     sourceBpm: Float? = null,
@@ -214,6 +226,13 @@ internal fun NowPlayingContent(
                 onEnabledChange = actions.onFilterEnabledChange,
                 onCutoffChange = actions.onFilterCutoffChange,
                 onModeChange = actions.onFilterModeChange,
+            )
+            DelayControls(
+                state = delay,
+                onEnabledChange = actions.onDelayEnabledChange,
+                onTimeChange = actions.onDelayTimeChange,
+                onFeedbackChange = actions.onDelayFeedbackChange,
+                onMixChange = actions.onDelayMixChange,
             )
             SleepTimerControls(
                 state = sleepTimer,
