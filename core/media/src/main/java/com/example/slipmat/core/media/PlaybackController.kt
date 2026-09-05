@@ -124,4 +124,13 @@ interface PlaybackController {
     fun setEqEnabled(enabled: Boolean)
 
     fun setEqGain(band: Int, gainDb: Float)
+
+    /**
+     * Sets every band at once.
+     *
+     * Loading a preset one band at a time redesigns the whole cascade eight times and emits eight
+     * states, so the curve animates through seven settings nobody asked for on its way to the one
+     * they did.
+     */
+    fun setEqGains(gainsDb: List<Float>)
 }

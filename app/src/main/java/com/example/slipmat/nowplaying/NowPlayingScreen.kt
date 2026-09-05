@@ -51,6 +51,7 @@ import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.dsp.DelayState
+import com.example.slipmat.core.data.eq.EqPreset
 import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
@@ -91,6 +92,9 @@ data class NowPlayingActions(
     val onDelayMixChange: (Float) -> Unit = {},
     val onEqEnabledChange: (Boolean) -> Unit = {},
     val onEqGainChange: (Int, Float) -> Unit = { _, _ -> },
+    val onSaveEqPreset: (String) -> Unit = {},
+    val onLoadEqPreset: (String) -> Unit = {},
+    val onDeleteEqPreset: (String) -> Unit = {},
 )
 
 @Composable
@@ -107,6 +111,7 @@ fun NowPlayingScreen(
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val delay by viewModel.delay.collectAsStateWithLifecycle()
     val eq by viewModel.eq.collectAsStateWithLifecycle()
+    val eqPresets by viewModel.eqPresets.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
@@ -118,6 +123,7 @@ fun NowPlayingScreen(
         filter = filter,
         delay = delay,
         eq = eq,
+        eqPresets = eqPresets,
         keyLock = keyLock,
         pitchRange = pitchRange,
         actions = NowPlayingActions(
@@ -147,6 +153,9 @@ fun NowPlayingScreen(
             onDelayMixChange = viewModel::onDelayMixChange,
             onEqEnabledChange = viewModel::onEqEnabledChange,
             onEqGainChange = viewModel::onEqGainChange,
+            onSaveEqPreset = viewModel::onSaveEqPreset,
+            onLoadEqPreset = viewModel::onLoadEqPreset,
+            onDeleteEqPreset = viewModel::onDeleteEqPreset,
         ),
         modifier = modifier,
     )
@@ -164,6 +173,7 @@ internal fun NowPlayingContent(
     filter: FilterState = FilterState(),
     delay: DelayState = DelayState(),
     eq: EqState = EqState(),
+    eqPresets: List<EqPreset> = emptyList(),
     keyLock: Boolean = true,
     pitchRange: PitchRange = PitchRange.Narrow,
     sourceBpm: Float? = null,
@@ -244,8 +254,12 @@ internal fun NowPlayingContent(
             )
             EqControls(
                 state = eq,
+                presets = eqPresets,
                 onEnabledChange = actions.onEqEnabledChange,
                 onGainChange = actions.onEqGainChange,
+                onSavePreset = actions.onSaveEqPreset,
+                onLoadPreset = actions.onLoadEqPreset,
+                onDeletePreset = actions.onDeleteEqPreset,
             )
             SleepTimerControls(
                 state = sleepTimer,

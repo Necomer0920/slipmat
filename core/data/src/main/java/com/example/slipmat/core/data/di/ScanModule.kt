@@ -1,5 +1,7 @@
 package com.example.slipmat.core.data.di
 
+import com.example.slipmat.core.data.eq.EqPresetRepository
+import com.example.slipmat.core.data.eq.EqPresetStore
 import com.example.slipmat.core.data.scan.AudioSource
 import com.example.slipmat.core.data.settings.DataStorePlaybackSettings
 import com.example.slipmat.core.data.settings.PlaybackSettings
@@ -18,4 +20,7 @@ abstract class ScanModule {
 
     @Binds
     abstract fun bindPlaybackSettings(impl: DataStorePlaybackSettings): PlaybackSettings
+
+    @Binds
+    abstract fun bindEqPresetStore(impl: EqPresetRepository): EqPresetStore
 }

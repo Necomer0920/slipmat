@@ -2,6 +2,7 @@ package com.example.slipmat.nowplaying
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
@@ -10,11 +11,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,7 +38,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.example.slipmat.core.data.eq.EqPreset
 import com.example.slipmat.core.media.dsp.EQ_BANDS
 import com.example.slipmat.core.media.dsp.EQ_MAX_GAIN_DB
 import com.example.slipmat.core.media.dsp.EqState
@@ -55,6 +71,10 @@ fun EqControls(
     onEnabledChange: (Boolean) -> Unit,
     onGainChange: (band: Int, gainDb: Float) -> Unit,
     modifier: Modifier = Modifier,
+    presets: List<EqPreset> = emptyList(),
+    onSavePreset: (String) -> Unit = {},
+    onLoadPreset: (String) -> Unit = {},
+    onDeletePreset: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -105,7 +125,80 @@ fun EqControls(
                 drawHandles(state.gainsDb, curveColor)
             }
         }
+
+        AnimatedVisibility(visible = state.enabled) {
+            PresetRow(
+                presets = presets,
+                onSave = onSavePreset,
+                onLoad = onLoadPreset,
+                onDelete = onDeletePreset,
+            )
+        }
     }
+}
+
+@Composable
+private fun PresetRow(
+    presets: List<EqPreset>,
+    onSave: (String) -> Unit,
+    onLoad: (String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Preset name") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { save(name, onSave) { name = "" } }),
+            )
+            TextButton(
+                onClick = { save(name, onSave) { name = "" } },
+                // A blank name saves a preset that cannot be loaded or deleted from a list of names.
+                enabled = name.isNotBlank(),
+            ) {
+                Text("Save")
+            }
+        }
+
+        // Scrolls sideways rather than wrapping: the list grows without pushing the curve around.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            for (preset in presets) {
+                InputChip(
+                    selected = false,
+                    onClick = { onLoad(preset.name) },
+                    label = { Text(preset.name) },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Delete ${preset.name}",
+                            modifier = Modifier.clickable { onDelete(preset.name) },
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+private inline fun save(name: String, onSave: (String) -> Unit, clear: () -> Unit) {
+    if (name.isBlank()) return
+    onSave(name)
+    clear()
 }
 
 private fun DrawScope.drawZeroLine(color: Color) {

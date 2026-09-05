@@ -121,6 +121,11 @@ class MediaControllerHolder @Inject constructor(
         _eqState.value = _eqState.value.copy(enabled = enabled)
     }
 
+    override fun setEqGains(gainsDb: List<Float>) {
+        effects.eq.setGains(gainsDb.toFloatArray())
+        _eqState.value = _eqState.value.copy(gainsDb = effects.eq.gains().toList())
+    }
+
     override fun setEqGain(band: Int, gainDb: Float) {
         effects.eq.setGain(band, gainDb)
         // Read back rather than assumed: the processor clamps, and the curve must draw what the

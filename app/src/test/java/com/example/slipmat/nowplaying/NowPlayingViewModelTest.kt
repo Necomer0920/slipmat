@@ -1,6 +1,8 @@
 package com.example.slipmat.nowplaying
 
 import com.example.slipmat.core.media.PlayerState
+import com.example.slipmat.core.media.dsp.EQ_BANDS
+import org.junit.Assert.assertTrue
 import com.example.slipmat.core.media.RepeatMode
 import org.junit.Assert.assertEquals
 import com.example.slipmat.MainDispatcherRule
@@ -14,7 +16,63 @@ class NowPlayingViewModelTest {
 
     private val playback = FakePlaybackController()
     private val settings = FakePlaybackSettings()
-    private val viewModel = NowPlayingViewModel(playback, settings, FakeWaveformSource())
+    private val presets = FakeEqPresetStore()
+    /**
+     * Built lazily, so construction happens inside the test method.
+     *
+     * JUnit instantiates the test class *before* it applies rules, so a view model created as a
+     * field captures `Dispatchers.Main` before [MainDispatcherRule] has installed one — and
+     * everything it launches from then on is queued against a dispatcher that never runs. The
+     * tests still pass, because a view model that does nothing breaks nothing that only reads
+     * state back from a fake.
+     */
+    private val viewModel by lazy {
+        NowPlayingViewModel(playback, settings, FakeWaveformSource(), presets)
+    }
+
+    @Test
+    fun `saving a preset captures the curve as it stands`() {
+        viewModel.onEqGainChange(2, 6f)
+
+        viewModel.onSaveEqPreset("  Club  ")
+
+        // Trimmed: a name with stray spaces is a different preset to the map than to the eye.
+        assertEquals("Club", presets.saved.single().name)
+        assertEquals(6f, presets.saved.single().gainsDb[2], 0.001f)
+    }
+
+    @Test
+    fun `loading a preset sets every band in one go`() {
+        presets.put("Club", List(EQ_BANDS.size) { 3f })
+        playback.calls.clear()
+
+        viewModel.onLoadEqPreset("Club")
+
+        // One call, not eight: band-at-a-time would animate the curve through seven settings
+        // nobody asked for on the way to the one they did.
+        assertEquals(1, playback.calls.size)
+        assertTrue(playback.calls.single(), playback.calls.single().startsWith("eqGains("))
+    }
+
+    @Test
+    fun `a blank name saves nothing`() {
+        viewModel.onSaveEqPreset("   ")
+
+        // A nameless preset cannot be loaded or deleted from a list that shows names.
+        assertEquals(emptyList<Any>(), presets.saved)
+    }
+
+    @Test
+    fun `loading a name that is gone does not touch the player`() {
+        presets.put("Club", List(EQ_BANDS.size) { 3f })
+        viewModel.onDeleteEqPreset("Club")
+        playback.calls.clear()
+
+        viewModel.onLoadEqPreset("Club")
+
+        assertEquals(emptyList<Any>(), presets.saved)
+        assertEquals(emptyList<String>(), playback.calls)
+    }
 
     @Test
     fun `a rebuilt screen shows the fader where the player left it`() {
@@ -23,7 +81,7 @@ class NowPlayingViewModelTest {
         // centre over audio still running at 0.92x, and the readout would claim +0.0%.
         viewModel.onSliderChange(-1f)
 
-        val rebuilt = NowPlayingViewModel(playback, settings, FakeWaveformSource())
+        val rebuilt = NowPlayingViewModel(playback, settings, FakeWaveformSource(), presets)
 
         assertEquals(-1f, rebuilt.sliderValue.value, 0.0001f)
     }

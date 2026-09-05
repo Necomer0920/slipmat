@@ -80,6 +80,10 @@ class FakePlaybackController : PlaybackController {
     override fun setDelayTime(ms: Float) { calls += "delayTime($ms)"; _delayState.value = _delayState.value.copy(timeMs = ms) }
     override fun setDelayFeedback(value: Float) { calls += "delayFeedback($value)"; _delayState.value = _delayState.value.copy(feedback = value) }
     override fun setDelayMix(value: Float) { calls += "delayMix($value)"; _delayState.value = _delayState.value.copy(mix = value) }
+    override fun setEqGains(gainsDb: List<Float>) {
+        calls += "eqGains(${gainsDb.joinToString(",")})"
+        _eqState.value = _eqState.value.copy(gainsDb = gainsDb)
+    }
     override fun setEqEnabled(enabled: Boolean) { calls += "eqEnabled($enabled)"; _eqState.value = _eqState.value.copy(enabled = enabled) }
     override fun setEqGain(band: Int, gainDb: Float) {
         calls += "eqGain($band,$gainDb)"
@@ -99,6 +103,41 @@ class FakePlaybackSettings(
     override val pitchRangeName: kotlinx.coroutines.flow.Flow<String?> = _range
 
     override suspend fun setPitchRangeName(name: String) { _range.value = name }
+}
+
+/** In-memory EQ presets, so preset behaviour can be tested without a database. */
+class FakeEqPresetStore : com.example.slipmat.core.data.eq.EqPresetStore {
+
+    private val stored = MutableStateFlow<List<com.example.slipmat.core.data.eq.EqPreset>>(emptyList())
+
+    /**
+     * What is stored, without suspending.
+     *
+     * So tests can assert on it without `runTest`, whose scheduler is not the one
+     * `MainDispatcherRule` gives `viewModelScope` — launches queue on the rule's scheduler and
+     * never run, and every assertion then describes a view model that did nothing.
+     */
+    val saved: List<com.example.slipmat.core.data.eq.EqPreset> get() = stored.value
+
+    fun put(name: String, gainsDb: List<Float>) {
+        stored.value = stored.value.filterNot { it.name == name } +
+            com.example.slipmat.core.data.eq.EqPreset(name, gainsDb)
+    }
+
+    override val presets: kotlinx.coroutines.flow.Flow<List<com.example.slipmat.core.data.eq.EqPreset>> = stored
+
+    override suspend fun save(name: String, gainsDb: List<Float>) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        stored.value = stored.value.filterNot { it.name == trimmed } +
+            com.example.slipmat.core.data.eq.EqPreset(trimmed, gainsDb)
+    }
+
+    override suspend fun load(name: String) = stored.value.firstOrNull { it.name == name }
+
+    override suspend fun delete(name: String) {
+        stored.value = stored.value.filterNot { it.name == name }
+    }
 }
 
 /** Returns a fixed waveform without decoding anything. */

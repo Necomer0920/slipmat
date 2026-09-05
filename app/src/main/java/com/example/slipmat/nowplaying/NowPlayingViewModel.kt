@@ -5,6 +5,8 @@ import com.example.slipmat.core.data.settings.PlaybackSettings
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.dsp.DelayState
+import com.example.slipmat.core.data.eq.EqPreset
+import com.example.slipmat.core.data.eq.EqPresetStore
 import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
@@ -36,6 +38,7 @@ class NowPlayingViewModel @Inject constructor(
     private val playback: PlaybackController,
     private val settings: PlaybackSettings,
     private val waveforms: WaveformSource,
+    private val presets: EqPresetStore,
 ) : ViewModel() {
 
     private val _waveform = MutableStateFlow<FloatArray?>(null)
@@ -90,6 +93,9 @@ class NowPlayingViewModel @Inject constructor(
 
     val eq: StateFlow<EqState> = playback.eqState
 
+    val eqPresets: StateFlow<List<EqPreset>> = presets.presets
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
     fun togglePlayPause() {
         if (state.value.isPlaying) playback.pause() else playback.play()
     }
@@ -126,6 +132,21 @@ class NowPlayingViewModel @Inject constructor(
     fun onEqEnabledChange(enabled: Boolean) = playback.setEqEnabled(enabled)
 
     fun onEqGainChange(band: Int, gainDb: Float) = playback.setEqGain(band, gainDb)
+
+    fun onSaveEqPreset(name: String) {
+        // Whatever the curve reads right now, which is what the user just spent time on.
+        viewModelScope.launch { presets.save(name, eq.value.gainsDb) }
+    }
+
+    fun onLoadEqPreset(name: String) {
+        viewModelScope.launch {
+            presets.load(name)?.let { preset -> playback.setEqGains(preset.gainsDb) }
+        }
+    }
+
+    fun onDeleteEqPreset(name: String) {
+        viewModelScope.launch { presets.delete(name) }
+    }
 
     fun onDelayEnabledChange(enabled: Boolean) = playback.setDelayEnabled(enabled)
 
