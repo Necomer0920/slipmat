@@ -9,6 +9,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -62,6 +64,22 @@ fun SlipmatNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    /**
+     * One `NowPlayingViewModel` for the strip, the full screen and the queue.
+     *
+     * A bare `hiltViewModel()` resolves against whatever owner is nearest, and these three do not
+     * share one: the strip sits outside the `NavHost`, so it gets the Activity's store, while the
+     * screens inside get their own `NavBackStackEntry`. That quietly produced *two* view models,
+     * each running its own waveform decode on every track change — several seconds of duplicated
+     * work per track, invisible because the two are never on screen at the same time.
+     *
+     * Resolving all three against the owner here — the Activity — also means walking back to the
+     * library and returning does not re-decode the waveform that was already on screen.
+     */
+    val sharedOwner = checkNotNull(LocalViewModelStoreOwner.current) {
+        "No ViewModelStoreOwner above SlipmatNavHost"
+    }
+
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val onNowPlaying = currentRoute == Routes.NOW_PLAYING || currentRoute == Routes.QUEUE
@@ -114,17 +132,24 @@ fun SlipmatNavHost(
                 NowPlayingScreen(
                     onBack = { navController.popBackStack() },
                     onOpenQueue = { navController.navigate(Routes.QUEUE) },
+                    viewModel = hiltViewModel(sharedOwner),
                 )
             }
             composable(Routes.QUEUE) {
-                QueueScreen(onBack = { navController.popBackStack() })
+                QueueScreen(
+                    onBack = { navController.popBackStack() },
+                    viewModel = hiltViewModel(sharedOwner),
+                )
             }
         }
 
         // The now-playing screen already shows everything the strip does, and the tab bar is
         // meaningless there, so both step aside rather than stacking up redundant chrome.
         if (!onNowPlaying) {
-            MiniPlayer(onClick = { navController.navigate(Routes.NOW_PLAYING) })
+            MiniPlayer(
+                onClick = { navController.navigate(Routes.NOW_PLAYING) },
+                viewModel = hiltViewModel(sharedOwner),
+            )
             BrowseBottomBar(navController, currentRoute)
         }
     }
