@@ -64,7 +64,25 @@ interface PlaybackController {
      * Both are supplied rather than derived here so the decision about what key lock *means* stays
      * in one tested place — see [speedPitchFor].
      */
-    fun setSpeedPitch(speedPitch: SpeedPitch)
+    /**
+     * The pitch fader's position: -1f at the slowest end, 0f at centre, 1f at the fastest.
+     *
+     * Held here because the player's parameters live this long. A position owned by the
+     * now-playing ViewModel dies with the screen while the audio stays pitched, so coming back to a
+     * track still playing at 0.92x showed a fader at centre and a readout of +0.0%.
+     */
+    val tempoSlider: StateFlow<Float>
+
+    /** Moves the fader without touching the player — cheap enough to call on every drag frame. */
+    fun moveTempoFader(sliderValue: Float)
+
+    /**
+     * Applies the fader's current position to the player.
+     *
+     * Takes the position from [tempoSlider] rather than as an argument, so what is heard and what is
+     * displayed cannot drift apart. This reconfigures the audio pipeline, so callers throttle it.
+     */
+    fun applyTempo(range: PitchRange, keyLock: Boolean)
 
     /** Filter state, mirrored for the UI. `FilterMode` is our own enum, not a Media3 type. */
     val filterState: StateFlow<FilterState>

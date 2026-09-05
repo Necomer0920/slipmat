@@ -17,6 +17,29 @@ class NowPlayingViewModelTest {
     private val viewModel = NowPlayingViewModel(playback, settings, FakeWaveformSource())
 
     @Test
+    fun `a rebuilt screen shows the fader where the player left it`() {
+        // Now-playing is a nav destination: walking back to the library destroys this ViewModel
+        // while the player keeps its parameters. A fader position owned here would return to
+        // centre over audio still running at 0.92x, and the readout would claim +0.0%.
+        viewModel.onSliderChange(-1f)
+
+        val rebuilt = NowPlayingViewModel(playback, settings, FakeWaveformSource())
+
+        assertEquals(-1f, rebuilt.sliderValue.value, 0.0001f)
+    }
+
+    @Test
+    fun `applying tempo reads the live fader position rather than a copy`() {
+        viewModel.onSliderChange(-1f)
+        playback.calls.clear()
+
+        viewModel.onSliderChangeFinished()
+
+        // Full slow travel on the default ±8% range, key lock on: tempo drops, key holds.
+        assertEquals(listOf("speed=0.92,pitch=1.0"), playback.calls)
+    }
+
+    @Test
     fun `the play button pauses when something is playing`() {
         playback.setState(PlayerState(isPlaying = true, mediaId = "1"))
 

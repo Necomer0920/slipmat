@@ -4,7 +4,8 @@ import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.core.media.RepeatMode
-import com.example.slipmat.core.media.SpeedPitch
+import com.example.slipmat.core.media.PitchRange
+import com.example.slipmat.core.media.speedPitchFor
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.SleepTimerState
@@ -28,6 +29,9 @@ class FakePlaybackController : PlaybackController {
     private val _filterState = MutableStateFlow(FilterState())
     override val filterState: StateFlow<FilterState> = _filterState
 
+    private val _tempoSlider = MutableStateFlow(0f)
+    override val tempoSlider: StateFlow<Float> = _tempoSlider
+
     val calls = mutableListOf<String>()
 
     fun setState(state: PlayerState) { _state.value = state }
@@ -48,7 +52,11 @@ class FakePlaybackController : PlaybackController {
     override fun skipToQueueIndex(index: Int) { calls += "skipTo($index)" }
     override fun startSleepTimer(durationMs: Long) { calls += "startSleepTimer($durationMs)" }
     override fun cancelSleepTimer() { calls += "cancelSleepTimer" }
-    override fun setSpeedPitch(speedPitch: SpeedPitch) { calls += "speed=${speedPitch.speed},pitch=${speedPitch.pitch}" }
+    override fun moveTempoFader(sliderValue: Float) { _tempoSlider.value = sliderValue.coerceIn(-1f, 1f) }
+    override fun applyTempo(range: PitchRange, keyLock: Boolean) {
+        val speedPitch = speedPitchFor(_tempoSlider.value, range, keyLock)
+        calls += "speed=${speedPitch.speed},pitch=${speedPitch.pitch}"
+    }
     override fun setFilterEnabled(enabled: Boolean) { calls += "filterEnabled($enabled)"; _filterState.value = _filterState.value.copy(enabled = enabled) }
     override fun setFilterCutoff(hz: Float) { calls += "cutoff($hz)"; _filterState.value = _filterState.value.copy(cutoffHz = hz) }
     override fun setFilterMode(mode: FilterMode) { calls += "filterMode($mode)"; _filterState.value = _filterState.value.copy(mode = mode) }

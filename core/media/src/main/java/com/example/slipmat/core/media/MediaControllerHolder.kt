@@ -71,8 +71,16 @@ class MediaControllerHolder @Inject constructor(
 
     override fun cancelSleepTimer() = sleepTimer.cancel()
 
-    override fun setSpeedPitch(speedPitch: SpeedPitch) = withController {
-        it.playbackParameters = PlaybackParameters(speedPitch.speed, speedPitch.pitch)
+    private val _tempoSlider = MutableStateFlow(0f)
+    override val tempoSlider: StateFlow<Float> = _tempoSlider.asStateFlow()
+
+    override fun moveTempoFader(sliderValue: Float) {
+        _tempoSlider.value = sliderValue.coerceIn(-1f, 1f)
+    }
+
+    override fun applyTempo(range: PitchRange, keyLock: Boolean) {
+        val speedPitch = speedPitchFor(_tempoSlider.value, range, keyLock)
+        withController { it.playbackParameters = PlaybackParameters(speedPitch.speed, speedPitch.pitch) }
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

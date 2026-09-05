@@ -6,7 +6,6 @@ import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
-import com.example.slipmat.core.media.speedPitchFor
 import com.example.slipmat.core.media.waveform.WaveformSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -63,14 +62,14 @@ class NowPlayingViewModel @Inject constructor(
     }
 
     /**
-     * The slider position, owned here rather than read back from the player.
+     * The slider position, kept by the controller rather than here.
      *
-     * A speed multiplier does not uniquely determine a slider position — 1.08x is full travel at
-     * ±8% and a fifth of it at ±50% — so deriving the slider from the player would make it jump
-     * whenever the range changed.
+     * It cannot be derived from the player's speed — 1.08x is full travel at ±8% and a fifth of it
+     * at ±50%, so the slider would jump whenever the range changed. But it cannot live in this
+     * ViewModel either: the player keeps its parameters across tracks and screens, and a position
+     * that dies with the screen leaves the readout claiming +0.0% over pitched audio.
      */
-    private val _sliderValue = MutableStateFlow(0f)
-    val sliderValue: StateFlow<Float> = _sliderValue.asStateFlow()
+    val sliderValue: StateFlow<Float> = playback.tempoSlider
 
     val keyLock: StateFlow<Boolean> = settings.keyLock
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), true)
@@ -144,34 +143,30 @@ class NowPlayingViewModel @Inject constructor(
      * at most one change per [APPLY_INTERVAL_MS], plus a final exact value on release.
      */
     fun onSliderChange(value: Float) {
-        _sliderValue.value = value
+        playback.moveTempoFader(value)
         val now = System.currentTimeMillis()
         if (now - lastAppliedAtMs >= APPLY_INTERVAL_MS) {
             lastAppliedAtMs = now
-            applySpeedPitch(value, keyLock.value, pitchRange.value)
+            playback.applyTempo(pitchRange.value, keyLock.value)
         }
     }
 
     /** Called when the finger lifts, so the player ends up on exactly the value shown. */
     fun onSliderChangeFinished() {
         lastAppliedAtMs = System.currentTimeMillis()
-        applySpeedPitch(_sliderValue.value, keyLock.value, pitchRange.value)
+        playback.applyTempo(pitchRange.value, keyLock.value)
     }
 
     fun onKeyLockChange(enabled: Boolean) {
         // Applied immediately so the switch takes effect mid-track, then persisted.
-        applySpeedPitch(_sliderValue.value, enabled, pitchRange.value)
+        playback.applyTempo(pitchRange.value, enabled)
         viewModelScope.launch { settings.setKeyLock(enabled) }
     }
 
     fun onRangeChange(range: PitchRange) {
         // The slider stays where it is, so the same position now means a different percentage.
-        applySpeedPitch(_sliderValue.value, keyLock.value, range)
+        playback.applyTempo(range, keyLock.value)
         viewModelScope.launch { settings.setPitchRangeName(range.name) }
-    }
-
-    private fun applySpeedPitch(slider: Float, keyLock: Boolean, range: PitchRange) {
-        playback.setSpeedPitch(speedPitchFor(slider, range, keyLock))
     }
 
     private var lastAppliedAtMs = 0L
