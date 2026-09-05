@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import com.example.slipmat.core.data.settings.PlaybackSettings
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
+import com.example.slipmat.core.media.dsp.FilterMode
+import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.speedPitchFor
 import com.example.slipmat.core.media.waveform.WaveformSource
 import kotlinx.coroutines.Job
@@ -81,6 +83,8 @@ class NowPlayingViewModel @Inject constructor(
 
     val sleepTimer: StateFlow<SleepTimerState> = playback.sleepTimerState
 
+    val filter: StateFlow<FilterState> = playback.filterState
+
     fun togglePlayPause() {
         if (state.value.isPlaying) playback.pause() else playback.play()
     }
@@ -113,6 +117,23 @@ class NowPlayingViewModel @Inject constructor(
     fun startSleepTimer(minutes: Int) = playback.startSleepTimer(minutes * 60_000L)
 
     fun cancelSleepTimer() = playback.cancelSleepTimer()
+
+    fun onFilterEnabledChange(enabled: Boolean) = playback.setFilterEnabled(enabled)
+
+    fun onFilterModeChange(mode: FilterMode) = playback.setFilterMode(mode)
+
+    /**
+     * Rate-limited for the same reason the tempo slider is: a drag emits a value per frame, and
+     * each one redesigns the filter. The audio thread reads the coefficients once per buffer, so
+     * more than a few updates per buffer is wasted work at best.
+     */
+    fun onFilterCutoffChange(hz: Float) {
+        val now = System.currentTimeMillis()
+        if (now - lastCutoffAtMs >= APPLY_INTERVAL_MS) {
+            lastCutoffAtMs = now
+            playback.setFilterCutoff(hz)
+        }
+    }
 
     /**
      * Updates the slider immediately, but rate-limits what reaches the player.
@@ -154,6 +175,7 @@ class NowPlayingViewModel @Inject constructor(
     }
 
     private var lastAppliedAtMs = 0L
+    private var lastCutoffAtMs = 0L
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L

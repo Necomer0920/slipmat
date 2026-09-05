@@ -50,6 +50,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
+import com.example.slipmat.core.media.dsp.FilterMode
+import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SleepTimerState
 import com.example.slipmat.library.formatDuration
@@ -78,6 +80,9 @@ data class NowPlayingActions(
     val onSliderChangeFinished: () -> Unit = {},
     val onKeyLockChange: (Boolean) -> Unit = {},
     val onRangeChange: (PitchRange) -> Unit = {},
+    val onFilterEnabledChange: (Boolean) -> Unit = {},
+    val onFilterCutoffChange: (Float) -> Unit = {},
+    val onFilterModeChange: (FilterMode) -> Unit = {},
 )
 
 @Composable
@@ -91,6 +96,7 @@ fun NowPlayingScreen(
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
     val sliderValue by viewModel.sliderValue.collectAsStateWithLifecycle()
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
@@ -99,6 +105,7 @@ fun NowPlayingScreen(
         sleepTimer = sleepTimer,
         sliderValue = sliderValue,
         waveform = waveform,
+        filter = filter,
         keyLock = keyLock,
         pitchRange = pitchRange,
         actions = NowPlayingActions(
@@ -119,6 +126,9 @@ fun NowPlayingScreen(
             onSliderChangeFinished = viewModel::onSliderChangeFinished,
             onKeyLockChange = viewModel::onKeyLockChange,
             onRangeChange = viewModel::onRangeChange,
+            onFilterEnabledChange = viewModel::onFilterEnabledChange,
+            onFilterCutoffChange = viewModel::onFilterCutoffChange,
+            onFilterModeChange = viewModel::onFilterModeChange,
         ),
         modifier = modifier,
     )
@@ -133,6 +143,7 @@ internal fun NowPlayingContent(
     modifier: Modifier = Modifier,
     sliderValue: Float = 0f,
     waveform: FloatArray? = null,
+    filter: FilterState = FilterState(),
     keyLock: Boolean = true,
     pitchRange: PitchRange = PitchRange.Narrow,
     sourceBpm: Float? = null,
@@ -198,6 +209,12 @@ internal fun NowPlayingContent(
             )
             TransportControls(state = state, actions = actions)
             ModeControls(state = state, actions = actions)
+            FilterControls(
+                state = filter,
+                onEnabledChange = actions.onFilterEnabledChange,
+                onCutoffChange = actions.onFilterCutoffChange,
+                onModeChange = actions.onFilterModeChange,
+            )
             SleepTimerControls(
                 state = sleepTimer,
                 onStart = actions.onStartSleepTimer,
