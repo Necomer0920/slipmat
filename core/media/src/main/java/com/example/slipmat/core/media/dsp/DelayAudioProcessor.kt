@@ -17,6 +17,15 @@ const val MIN_DELAY_MS = 20f
 const val DEFAULT_DELAY_MS = 500f
 
 /**
+ * Feedback stops here rather than at 1.0.
+ *
+ * At exactly 1.0 the line neither grows nor decays — an infinite hold. That is a real effect, but
+ * it is not this one, and a repeat control whose top end never stops repeating is a control that
+ * has no top end. 0.9 gives roughly twenty audible repeats before the tail is gone.
+ */
+const val MAX_FEEDBACK = 0.9f
+
+/**
  * An echo in ExoPlayer's audio pipeline.
  *
  * **Runs on the audio thread**, under the same rules as [BiquadAudioProcessor]: no allocation in
@@ -36,6 +45,9 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
     @Volatile
     private var delayMs: Float = DEFAULT_DELAY_MS
+
+    @Volatile
+    private var feedback: Float = 0f
 
     private var sampleRate: Int = C.RATE_UNSET_INT
     private var channelCount: Int = 0
@@ -63,6 +75,10 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
     fun setDelayMs(ms: Float) {
         delayMs = ms.coerceIn(MIN_DELAY_MS, MAX_DELAY_MS)
+    }
+
+    fun setFeedback(value: Float) {
+        feedback = value.coerceIn(0f, MAX_FEEDBACK)
     }
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -101,6 +117,8 @@ class DelayAudioProcessor : BaseAudioProcessor() {
 
         // Read once per buffer: a delay length that changed mid-buffer would splice the line.
         val delayFrames = framesFor(delayMs, sampleRate).coerceIn(1, lineFrames - 1)
+        val fb = feedback
+        val dryGain = 1f - fb
         val frameBytes = channelCount * 2
 
         while (input.remaining() >= frameBytes) {
@@ -114,7 +132,12 @@ class DelayAudioProcessor : BaseAudioProcessor() {
                 val dry = input.short.toFloat()
                 val wet = line[readBase + channel]
 
-                line[writeBase + channel] = dry
+                // Normalised feedback. The obvious `dry + wet * fb` converges to `dry / (1 - fb)`
+                // on sustained material — twenty times the input at the top of the range — so it
+                // clips solid on anything but an isolated drum hit. Scaling the input by the same
+                // amount the tail is fed back holds the steady state at exactly the input level,
+                // for any feedback value, without a limiter deciding how it sounds.
+                line[writeBase + channel] = dryGain * dry + fb * wet
                 output.putShort(mixDown(dry, wet))
 
                 channel++

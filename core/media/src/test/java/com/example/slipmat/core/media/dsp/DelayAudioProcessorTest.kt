@@ -17,6 +17,7 @@ private const val DELAY_MS = 20f
 /** 882 frames at 44.1 kHz — short enough to feed in one buffer, long enough to be a real delay. */
 private const val DELAY_FRAMES = 882
 
+private const val AMPLITUDE = 20_000
 private const val IMPULSE: Short = 20_000
 private const val FRAMES = 2_000
 
@@ -64,6 +65,46 @@ class DelayAudioProcessorTest {
 
         val loud = output.indices.filter { output[it] != 0.toShort() }
         assertEquals(listOf(0, DELAY_FRAMES * 2 * CHANNELS), loud)
+    }
+
+    @Test
+    fun `feedback repeats the echo, quieter each time`() {
+        val processor = configured(enabled = true)
+        processor.setFeedback(0.5f)
+
+        val output = processor.process(impulseInLeft())
+
+        val echoes = (1..2).map { output[DELAY_FRAMES * CHANNELS * it] }
+        assertTrue("expected a second repeat, got $echoes", echoes[1] != 0.toShort())
+        assertTrue("repeats must decay, got $echoes", echoes[1] < echoes[0])
+    }
+
+    @Test
+    fun `sustained material at full feedback does not build up`() {
+        val processor = configured(enabled = true)
+        processor.setFeedback(1f) // clamped to the ceiling
+
+        // Long enough for the line to turn over ~90 times, well past steady state.
+        var peak = 0
+        repeat(40) {
+            peak = maxOf(peak, processor.process(loudTone()).maxOf { kotlin.math.abs(it.toInt()) })
+        }
+
+        // The naive `dry + wet * fb` saturates the line here and comes out above 26,000.
+        assertTrue("output grew to $peak", peak <= AMPLITUDE + 1_000)
+    }
+
+    @Test
+    fun `feedback cannot be pushed past the ceiling`() {
+        val processor = configured(enabled = true)
+        processor.setFeedback(5f)
+
+        val output = processor.process(impulseInLeft())
+
+        // Still decaying rather than holding: an echo at the ceiling is quieter than the one before.
+        val first = output[DELAY_FRAMES * CHANNELS]
+        val second = output[DELAY_FRAMES * CHANNELS * 2]
+        assertTrue("no decay at the ceiling: $first then $second", second < first)
     }
 
     @Test
@@ -142,6 +183,16 @@ private fun impulseInLeft(): ByteBuffer {
     buffer.putShort(IMPULSE)
     buffer.putShort(0)
     repeat((FRAMES - 1) * CHANNELS) { buffer.putShort(0) }
+    return buffer.flip() as ByteBuffer
+}
+
+/** Full-level low tone: at 20 ms the echoes come back in phase and add, which is the worst case. */
+private fun loudTone(): ByteBuffer {
+    val buffer = ByteBuffer.allocate(FRAMES * CHANNELS * 2).order(ByteOrder.nativeOrder())
+    for (frame in 0 until FRAMES) {
+        val sample = (kotlin.math.sin(2.0 * Math.PI * 100.0 * frame / RATE) * AMPLITUDE).toInt().toShort()
+        repeat(CHANNELS) { buffer.putShort(sample) }
+    }
     return buffer.flip() as ByteBuffer
 }
 
