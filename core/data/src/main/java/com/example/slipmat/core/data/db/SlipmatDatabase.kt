@@ -14,12 +14,21 @@ import androidx.room.TypeConverters
  * needs the previous schema on disk to migrate *from*.
  */
 @Database(
-    entities = [TrackEntity::class, PlaybackPositionEntity::class, WaveformEntity::class],
-    version = 3,
+    entities = [
+        TrackEntity::class,
+        PlaybackPositionEntity::class,
+        WaveformEntity::class,
+        EqPresetEntity::class,
+    ],
+    version = 4,
     exportSchema = true,
     // Adding a table is a purely additive change, so Room can generate the migration from the
     // exported schemas. Hand-written migrations are reserved for changes it cannot infer.
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4),
+    ],
 )
 @TypeConverters(WaveformConverters::class)
 abstract class SlipmatDatabase : RoomDatabase() {
@@ -29,6 +38,8 @@ abstract class SlipmatDatabase : RoomDatabase() {
     abstract fun playbackPositionDao(): PlaybackPositionDao
 
     abstract fun waveformDao(): WaveformDao
+
+    abstract fun eqPresetDao(): EqPresetDao
 
     companion object {
         const val NAME = "slipmat.db"

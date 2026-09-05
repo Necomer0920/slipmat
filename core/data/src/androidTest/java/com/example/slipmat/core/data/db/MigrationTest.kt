@@ -52,6 +52,42 @@ class MigrationTest {
     }
 
     @Test
+    fun migrate3To4AddsEqPresetsAndKeepsTheWaveformCache() {
+        helper.createDatabase(TEST_DB, 3).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO tracks
+                  (id, title, artist, albumArtist, album, albumId, durationMs, uri, folderPath, dateModified, albumArtUri)
+                VALUES
+                  (1, 'Kept Track', 'A', 'A', 'Al', 7, 60000, 'content://x/1', '/Music', 100, NULL)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "INSERT INTO playback_positions (mediaUri, positionMs, updatedAt) VALUES ('content://x/1', 4242, 1)",
+            )
+            db.execSQL(
+                "INSERT INTO waveforms (mediaUri, peaks, generatedAt) VALUES ('content://x/1', '0.1000,0.9000', 5)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 4, true)
+
+        // The waveform cache is the expensive one to lose: every track would decode again.
+        db.query("SELECT peaks FROM waveforms").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("0.1000,0.9000", cursor.getString(0))
+        }
+        db.query("SELECT positionMs FROM playback_positions").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(4242, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM eq_presets").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+    }
+
+    @Test
     fun migrate2To3AddsTheWaveformCacheAndKeepsPositions() {
         helper.createDatabase(TEST_DB, 2).use { db ->
             db.execSQL(
