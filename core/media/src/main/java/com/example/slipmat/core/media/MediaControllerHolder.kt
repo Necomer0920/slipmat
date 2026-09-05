@@ -74,12 +74,19 @@ class MediaControllerHolder @Inject constructor(
     private val _tempoSlider = MutableStateFlow(0f)
     override val tempoSlider: StateFlow<Float> = _tempoSlider.asStateFlow()
 
+    private val _keyLock = MutableStateFlow(true)
+    override val keyLock: StateFlow<Boolean> = _keyLock.asStateFlow()
+
     override fun moveTempoFader(sliderValue: Float) {
         _tempoSlider.value = sliderValue.coerceIn(-1f, 1f)
     }
 
-    override fun applyTempo(range: PitchRange, keyLock: Boolean) {
-        val speedPitch = speedPitchFor(_tempoSlider.value, range, keyLock)
+    override fun setKeyLock(enabled: Boolean) {
+        _keyLock.value = enabled
+    }
+
+    override fun applyTempo(range: PitchRange) {
+        val speedPitch = speedPitchFor(_tempoSlider.value, range, _keyLock.value)
         withController { it.playbackParameters = PlaybackParameters(speedPitch.speed, speedPitch.pitch) }
     }
 
@@ -139,6 +146,14 @@ class MediaControllerHolder @Inject constructor(
         )
         controller.prepare()
         controller.play()
+
+        // A new queue is a fresh start: the fader returns to centre and the key holds again.
+        // Moving *within* a queue keeps what was set — auto-advance, next, previous and tapping a
+        // queue row are all one continuous session, and a deck's fader does not spring back
+        // between records in a mix.
+        _tempoSlider.value = 0f
+        _keyLock.value = true
+        controller.playbackParameters = PlaybackParameters.DEFAULT
     }
 
     override fun play() = withController { it.play() }

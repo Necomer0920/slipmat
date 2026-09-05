@@ -29,6 +29,18 @@ class NowPlayingViewModelTest {
     }
 
     @Test
+    fun `advancing within a queue leaves the fader alone`() {
+        // Half the rule: auto-advance, next and previous are one continuous session, so what was
+        // set for the mix stays set. The other half — loading a new queue resets — lives in the
+        // controller's playQueue, which needs a real MediaController and is checked on device.
+        viewModel.onSliderChange(-1f)
+
+        playback.setState(PlayerState(mediaId = "2", isPlaying = true))
+
+        assertEquals(-1f, viewModel.sliderValue.value, 0.0001f)
+    }
+
+    @Test
     fun `applying tempo reads the live fader position rather than a copy`() {
         viewModel.onSliderChange(-1f)
         playback.calls.clear()

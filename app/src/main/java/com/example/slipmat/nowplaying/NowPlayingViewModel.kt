@@ -71,8 +71,8 @@ class NowPlayingViewModel @Inject constructor(
      */
     val sliderValue: StateFlow<Float> = playback.tempoSlider
 
-    val keyLock: StateFlow<Boolean> = settings.keyLock
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), true)
+    /** Performance state, so it sits with the fader in the controller rather than in DataStore. */
+    val keyLock: StateFlow<Boolean> = playback.keyLock
 
     val pitchRange: StateFlow<PitchRange> = settings.pitchRangeName
         .map { name -> PitchRange.entries.firstOrNull { it.name == name } ?: PitchRange.Narrow }
@@ -147,25 +147,25 @@ class NowPlayingViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         if (now - lastAppliedAtMs >= APPLY_INTERVAL_MS) {
             lastAppliedAtMs = now
-            playback.applyTempo(pitchRange.value, keyLock.value)
+            playback.applyTempo(pitchRange.value)
         }
     }
 
     /** Called when the finger lifts, so the player ends up on exactly the value shown. */
     fun onSliderChangeFinished() {
         lastAppliedAtMs = System.currentTimeMillis()
-        playback.applyTempo(pitchRange.value, keyLock.value)
+        playback.applyTempo(pitchRange.value)
     }
 
     fun onKeyLockChange(enabled: Boolean) {
-        // Applied immediately so the switch takes effect mid-track, then persisted.
-        playback.applyTempo(pitchRange.value, enabled)
-        viewModelScope.launch { settings.setKeyLock(enabled) }
+        playback.setKeyLock(enabled)
+        // Applied at once, so the switch takes effect on the track already playing.
+        playback.applyTempo(pitchRange.value)
     }
 
     fun onRangeChange(range: PitchRange) {
         // The slider stays where it is, so the same position now means a different percentage.
-        playback.applyTempo(range, keyLock.value)
+        playback.applyTempo(range)
         viewModelScope.launch { settings.setPitchRangeName(range.name) }
     }
 

@@ -32,13 +32,20 @@ class FakePlaybackController : PlaybackController {
     private val _tempoSlider = MutableStateFlow(0f)
     override val tempoSlider: StateFlow<Float> = _tempoSlider
 
+    private val _keyLock = MutableStateFlow(true)
+    override val keyLock: StateFlow<Boolean> = _keyLock
+
     val calls = mutableListOf<String>()
 
     fun setState(state: PlayerState) { _state.value = state }
 
     override fun connect() { calls += "connect" }
     override fun release() { calls += "release" }
-    override fun playQueue(items: List<QueueItem>, startIndex: Int) { calls += "playQueue(${items.size},$startIndex)" }
+    override fun playQueue(items: List<QueueItem>, startIndex: Int) {
+        calls += "playQueue(${items.size},$startIndex)"
+        _tempoSlider.value = 0f
+        _keyLock.value = true
+    }
     override fun play() { calls += "play" }
     override fun pause() { calls += "pause" }
     override fun next() { calls += "next" }
@@ -53,8 +60,9 @@ class FakePlaybackController : PlaybackController {
     override fun startSleepTimer(durationMs: Long) { calls += "startSleepTimer($durationMs)" }
     override fun cancelSleepTimer() { calls += "cancelSleepTimer" }
     override fun moveTempoFader(sliderValue: Float) { _tempoSlider.value = sliderValue.coerceIn(-1f, 1f) }
-    override fun applyTempo(range: PitchRange, keyLock: Boolean) {
-        val speedPitch = speedPitchFor(_tempoSlider.value, range, keyLock)
+    override fun setKeyLock(enabled: Boolean) { _keyLock.value = enabled }
+    override fun applyTempo(range: PitchRange) {
+        val speedPitch = speedPitchFor(_tempoSlider.value, range, _keyLock.value)
         calls += "speed=${speedPitch.speed},pitch=${speedPitch.pitch}"
     }
     override fun setFilterEnabled(enabled: Boolean) { calls += "filterEnabled($enabled)"; _filterState.value = _filterState.value.copy(enabled = enabled) }
@@ -64,17 +72,13 @@ class FakePlaybackController : PlaybackController {
 
 /** In-memory settings, so the view model can be tested without a Context or DataStore. */
 class FakePlaybackSettings(
-    keyLockInitial: Boolean = true,
     rangeInitial: String? = null,
 ) : com.example.slipmat.core.data.settings.PlaybackSettings {
 
-    private val _keyLock = MutableStateFlow(keyLockInitial)
     private val _range = MutableStateFlow(rangeInitial)
 
-    override val keyLock: kotlinx.coroutines.flow.Flow<Boolean> = _keyLock
     override val pitchRangeName: kotlinx.coroutines.flow.Flow<String?> = _range
 
-    override suspend fun setKeyLock(enabled: Boolean) { _keyLock.value = enabled }
     override suspend fun setPitchRangeName(name: String) { _range.value = name }
 }
 

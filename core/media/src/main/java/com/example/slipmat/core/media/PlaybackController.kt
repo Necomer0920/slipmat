@@ -73,8 +73,20 @@ interface PlaybackController {
      */
     val tempoSlider: StateFlow<Float>
 
+    /**
+     * Whether the key holds while the tempo moves.
+     *
+     * Performance state, like [tempoSlider], and reset alongside it — not a saved preference. A
+     * vinyl-mode setting that outlived the track it was set for is how a fresh song ends up
+     * playing a semitone flat for no visible reason.
+     */
+    val keyLock: StateFlow<Boolean>
+
     /** Moves the fader without touching the player — cheap enough to call on every drag frame. */
     fun moveTempoFader(sliderValue: Float)
+
+    /** Sets key lock. Takes effect on the next [applyTempo]. */
+    fun setKeyLock(enabled: Boolean)
 
     /**
      * Applies the fader's current position to the player.
@@ -82,7 +94,7 @@ interface PlaybackController {
      * Takes the position from [tempoSlider] rather than as an argument, so what is heard and what is
      * displayed cannot drift apart. This reconfigures the audio pipeline, so callers throttle it.
      */
-    fun applyTempo(range: PitchRange, keyLock: Boolean)
+    fun applyTempo(range: PitchRange)
 
     /** Filter state, mirrored for the UI. `FilterMode` is our own enum, not a Media3 type. */
     val filterState: StateFlow<FilterState>
