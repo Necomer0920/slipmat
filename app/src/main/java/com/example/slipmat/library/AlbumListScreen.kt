@@ -21,12 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.data.db.AlbumSummary
+import com.example.slipmat.ui.theme.CornerAlbumCell
 
 @Composable
 fun AlbumListScreen(
@@ -37,11 +40,11 @@ fun AlbumListScreen(
     val albums by viewModel.albums.collectAsStateWithLifecycle()
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 150.dp),
+        columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         items(items = albums, key = { it.album + '|' + it.albumArtist }) { album ->
             AlbumCard(
@@ -67,19 +70,22 @@ private fun AlbumCard(album: AlbumSummary, onClick: () -> Unit, modifier: Modifi
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(CornerAlbumCell)),
             error = { ArtworkPlaceholder(album.album) },
             loading = { ArtworkPlaceholder(album.album) },
         )
         Text(
             text = album.album,
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = "${album.albumArtist} · ${pluralise(album.trackCount, "track")}",
-            style = MaterialTheme.typography.bodySmall,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
