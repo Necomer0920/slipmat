@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,8 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import com.example.slipmat.ui.theme.CornerLarge
 import com.example.slipmat.ui.theme.accentShadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -154,7 +156,7 @@ internal fun NowPlayingContent(
             verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Artwork(state, Modifier.fillMaxWidth(0.8f))
+            Artwork(state)
 
             Text(
                 text = state.title ?: "Nothing playing",
@@ -242,13 +244,19 @@ private fun NowPlayingHeader(actions: NowPlayingActions, modifier: Modifier = Mo
     }
 }
 
+private val ARTWORK_SIZE = 168.dp
+
 @Composable
 private fun Artwork(state: PlayerState, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(CornerLarge)
     SubcomposeAsyncImage(
         model = state.artworkUri,
         contentDescription = null,
         contentScale = ContentScale.Crop,
-        modifier = modifier.aspectRatio(1f).clip(RoundedCornerShape(12.dp)),
+        modifier = modifier
+            .size(ARTWORK_SIZE)
+            .shadow(elevation = 16.dp, shape = shape)
+            .clip(shape),
         error = { ArtworkPlaceholder() },
         loading = { ArtworkPlaceholder() },
     )
@@ -258,7 +266,7 @@ private fun Artwork(state: PlayerState, modifier: Modifier = Modifier) {
 private fun ArtworkPlaceholder() {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {}
 }
 
