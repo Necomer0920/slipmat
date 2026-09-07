@@ -7,7 +7,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +42,7 @@ import com.example.slipmat.library.LibraryScreen
 import com.example.slipmat.nowplaying.MiniPlayer
 import com.example.slipmat.nowplaying.NowPlayingScreen
 import com.example.slipmat.nowplaying.QueueScreen
+import com.example.slipmat.stub.StubScreen
 import com.example.slipmat.ui.components.PillTab
 
 /** The four browse modes. */
@@ -60,6 +69,9 @@ private object Routes {
 
     const val NOW_PLAYING = "nowPlaying"
     const val QUEUE = "queue"
+
+    const val SEARCH = "search"
+    const val SETTINGS = "settings"
 }
 
 @Composable
@@ -167,6 +179,12 @@ fun SlipmatNavHost(
                     viewModel = hiltViewModel(sharedOwner),
                 )
             }
+            composable(Routes.SEARCH) {
+                StubScreen(title = "Search", onBack = { navController.popBackStack() })
+            }
+            composable(Routes.SETTINGS) {
+                StubScreen(title = "Settings", onBack = { navController.popBackStack() })
+            }
         }
 
         // The now-playing screen already shows everything the strip does, and the tab bar is
@@ -176,7 +194,72 @@ fun SlipmatNavHost(
                 onClick = { navController.navigate(Routes.NOW_PLAYING) },
                 viewModel = hiltViewModel(sharedOwner),
             )
+            AppBottomBar(
+                onLibrarySection = onBrowseTab ||
+                    currentRoute in setOf(Routes.ARTIST_DETAIL, Routes.ALBUM_DETAIL, Routes.FOLDER_DETAIL),
+                onSearch = currentRoute == Routes.SEARCH,
+                onSettings = currentRoute == Routes.SETTINGS,
+                onLibraryClick = {
+                    if (currentRoute == Routes.SEARCH || currentRoute == Routes.SETTINGS) {
+                        navController.popBackStack()
+                    }
+                },
+                onSearchClick = {
+                    // Switching directly from Settings must replace it, not stack on top of it -
+                    // otherwise Library's single popBackStack() only peels off one stub screen.
+                    navController.navigate(Routes.SEARCH) {
+                        if (currentRoute == Routes.SETTINGS) {
+                            popUpTo(Routes.SETTINGS) { inclusive = true }
+                        }
+                    }
+                },
+                onSettingsClick = {
+                    navController.navigate(Routes.SETTINGS) {
+                        if (currentRoute == Routes.SEARCH) {
+                            popUpTo(Routes.SEARCH) { inclusive = true }
+                        }
+                    }
+                },
+            )
         }
+    }
+}
+
+/**
+ * Library / Search / Settings — down from the old four-item browse-mode bar (§5.6). Search and
+ * Settings are plain pushes with default back behaviour, not tab switches: they are dead-end stub
+ * screens, not persisted sibling state the way the browse tabs are.
+ */
+@Composable
+private fun AppBottomBar(
+    onLibrarySection: Boolean,
+    onSearch: Boolean,
+    onSettings: Boolean,
+    onLibraryClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val iconSize = 22.dp
+    NavigationBar(modifier = modifier) {
+        NavigationBarItem(
+            selected = onLibrarySection,
+            onClick = onLibraryClick,
+            icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = null, modifier = Modifier.size(iconSize)) },
+            label = { Text("Library", style = MaterialTheme.typography.labelMedium) },
+        )
+        NavigationBarItem(
+            selected = onSearch,
+            onClick = onSearchClick,
+            icon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(iconSize)) },
+            label = { Text("Search", style = MaterialTheme.typography.labelMedium) },
+        )
+        NavigationBarItem(
+            selected = onSettings,
+            onClick = onSettingsClick,
+            icon = { Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(iconSize)) },
+            label = { Text("Settings", style = MaterialTheme.typography.labelMedium) },
+        )
     }
 }
 
