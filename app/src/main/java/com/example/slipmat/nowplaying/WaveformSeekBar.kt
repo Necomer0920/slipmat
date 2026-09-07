@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -27,7 +28,11 @@ import com.example.slipmat.library.formatDuration
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-private val WAVEFORM_HEIGHT = 72.dp
+/** §4.2: 64 bars, 52dp tall, 2px gaps, radius-2, bottom-aligned. */
+private val WAVEFORM_HEIGHT = 52.dp
+private const val BAR_COUNT = 64
+private val BAR_GAP = 2.dp
+private val BAR_CORNER_RADIUS = 2.dp
 
 /** Thickness of the line shown before the waveform exists. A Material slider track is 4.dp. */
 private val FLAT_LINE_THICKNESS = 3.dp
@@ -55,7 +60,9 @@ fun WaveformSeekBar(
 
     val shown = scrubFraction ?: progress
     val played = MaterialTheme.colorScheme.primary
-    val unplayed = MaterialTheme.colorScheme.surfaceVariant
+    // surfaceContainerHighest, not surfaceVariant - §3.1 pins the two to the same value, but this
+    // is the role the design actually names for the waveform's unplayed bars.
+    val unplayed = MaterialTheme.colorScheme.surfaceContainerHighest
 
     Column(modifier = modifier.fillMaxWidth()) {
         Box {
@@ -182,25 +189,47 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFlatLine(
     played: Color,
     unplayed: Color,
 ) {
-    val centreY = size.height / 2f
+    // Bottom-aligned, matching the bars it grows into once the decode finishes - the line's own
+    // baseline is exactly where every bar's bottom edge sits.
+    val baselineY = size.height - FLAT_LINE_THICKNESS.toPx() / 2f
     val thickness = FLAT_LINE_THICKNESS.toPx()
     val playedTo = (progress.coerceIn(0f, 1f) * size.width)
 
     drawLine(
         color = unplayed,
-        start = Offset(0f, centreY),
-        end = Offset(size.width, centreY),
+        start = Offset(0f, baselineY),
+        end = Offset(size.width, baselineY),
         strokeWidth = thickness,
         cap = StrokeCap.Round,
     )
     if (playedTo > 0f) {
         drawLine(
             color = played,
-            start = Offset(0f, centreY),
-            end = Offset(playedTo, centreY),
+            start = Offset(0f, baselineY),
+            end = Offset(playedTo, baselineY),
             strokeWidth = thickness,
             cap = StrokeCap.Round,
         )
+    }
+}
+
+/**
+ * Reduces [peaks] to exactly [barCount] bar heights, each the loudest sample in its own span of
+ * the source array. Spans are computed as `bar * peaks.size / barCount` .. `(bar+1) * peaks.size /
+ * barCount`, the standard "distribute N items across M buckets as evenly as possible" split: every
+ * bucket gets at least one item whenever `peaks.size >= barCount` (always true here - a decoded
+ * waveform runs to hundreds of samples, never as few as 64), so no span is ever empty and spans
+ * never overlap. The last bucket's span end is pinned to `peaks.size` explicitly, stating the
+ * guarantee directly rather than leaving it as an implicit property of the arithmetic.
+ */
+internal fun bucketPeaks(peaks: FloatArray, barCount: Int): FloatArray {
+    if (barCount <= 0 || peaks.isEmpty()) return FloatArray(0)
+    return FloatArray(barCount) { bar ->
+        val from = bar * peaks.size / barCount
+        val to = if (bar == barCount - 1) peaks.size else (bar + 1) * peaks.size / barCount
+        var loudest = 0f
+        for (i in from until to) if (peaks[i] > loudest) loudest = peaks[i]
+        loudest
     }
 }
 
@@ -211,17 +240,21 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWaveform(
     unplayed: Color,
 ) {
     if (peaks.isEmpty()) return
-    val barWidth = size.width / peaks.size
-    val centreY = size.height / 2f
-    val playedUpTo = progress * peaks.size
+    val bars = bucketPeaks(peaks, BAR_COUNT)
+    val gapPx = BAR_GAP.toPx()
+    val barWidth = (size.width - gapPx * (BAR_COUNT - 1)) / BAR_COUNT
+    val cornerPx = BAR_CORNER_RADIUS.toPx()
+    val playedUpTo = progress * BAR_COUNT
 
-    peaks.forEachIndexed { index, peak ->
+    bars.forEachIndexed { index, peak ->
         // Always at least a hair tall, so silence still reads as part of the track.
         val barHeight = (peak * size.height).coerceAtLeast(2f)
-        drawRect(
+        val x = index * (barWidth + gapPx)
+        drawRoundRect(
             color = if (index < playedUpTo) played else unplayed,
-            topLeft = Offset(index * barWidth, centreY - barHeight / 2f),
-            size = androidx.compose.ui.geometry.Size(barWidth * 0.8f, barHeight),
+            topLeft = Offset(x, size.height - barHeight),
+            size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
+            cornerRadius = CornerRadius(cornerPx, cornerPx),
         )
     }
 }
