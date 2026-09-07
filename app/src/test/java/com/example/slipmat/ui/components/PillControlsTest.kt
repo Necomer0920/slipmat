@@ -70,4 +70,20 @@ class PillControlsTest {
         val inactiveContent = segmentContentColor(false, OnSurface, OnSurfaceVariant)
         assertNotEquals(activeContent, inactiveContent)
     }
+
+    @Test
+    fun `the effect dot's filled state tracks enabled, for all three effects alike`() {
+        // The dot is a pure function of `enabled` - the same rule for filter, delay and EQ alike,
+        // since none of the three is special-cased in the composable that reads this.
+        val filterOn = effectDotColor(enabled = true, primary = Primary, onSurfaceVariant = OnSurfaceVariant)
+        val filterOff = effectDotColor(enabled = false, primary = Primary, onSurfaceVariant = OnSurfaceVariant)
+        val delayOn = effectDotColor(enabled = true, primary = Primary, onSurfaceVariant = OnSurfaceVariant)
+        val delayOff = effectDotColor(enabled = false, primary = Primary, onSurfaceVariant = OnSurfaceVariant)
+        val eqOn = effectDotColor(enabled = true, primary = Primary, onSurfaceVariant = OnSurfaceVariant)
+        val eqOff = effectDotColor(enabled = false, primary = Primary, onSurfaceVariant = OnSurfaceVariant)
+
+        for (on in listOf(filterOn, delayOn, eqOn)) assertEquals(Primary, on)
+        for (off in listOf(filterOff, delayOff, eqOff)) assertEquals(OnSurfaceVariant, off)
+        assertNotEquals(filterOn, filterOff)
+    }
 }

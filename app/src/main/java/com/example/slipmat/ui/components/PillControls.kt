@@ -1,10 +1,14 @@
 package com.example.slipmat.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -111,7 +115,8 @@ internal fun segmentContentColor(selected: Boolean, onSurface: Color, onSurfaceV
 /**
  * The filter LP/HP toggle and the Performance Filter/Delay/EQ tab row. Bare — see the file note on
  * outer strips. Each segment fills equally (`Modifier.weight(1f)`), so three or two options both
- * span the available width the same way.
+ * span the available width the same way. `trailing` renders after the label — the Performance tab
+ * row's per-effect state dot (§5.1); unused callers (the filter LP/HP toggle) leave it `null`.
  */
 @Composable
 fun <T> SegmentedToggle(
@@ -120,6 +125,7 @@ fun <T> SegmentedToggle(
     onSelect: (T) -> Unit,
     label: (T) -> String,
     modifier: Modifier = Modifier,
+    trailing: (@Composable (T) -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Row(modifier = modifier) {
@@ -137,9 +143,50 @@ fun <T> SegmentedToggle(
                     color = segmentContainerColor(isSelected, colorScheme.surfaceContainerHigh),
                     contentColor = segmentContentColor(isSelected, colorScheme.onSurface, colorScheme.onSurfaceVariant),
                 ) {
-                    Text(text = label(option), style = MaterialTheme.typography.labelLarge, modifier = PillPadding)
+                    Row(
+                        modifier = PillPadding,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(text = label(option), style = MaterialTheme.typography.labelLarge)
+                        trailing?.invoke(option)
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * §5.1's per-effect state dot: filled `primary` when the effect is on, `onSurfaceVariant` when it
+ * isn't - not `outlineVariant`, which is the exact same value as `surfaceContainerHigh` in this
+ * theme (both dark and light) and would vanish against the selected tab's own fill.
+ */
+internal fun effectDotColor(enabled: Boolean, primary: Color, onSurfaceVariant: Color): Color =
+    if (enabled) primary else onSurfaceVariant
+
+private val EffectDotSize = 8.dp
+
+/**
+ * The tap target that turns an effect back off (§5.1) — touching any control in its panel is what
+ * turns it on (R3.6), so this dot is the only way to switch it off again without opening the panel.
+ */
+@Composable
+fun EffectDot(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colorScheme = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier
+            .defaultMinSize(minWidth = TouchMinimum, minHeight = TouchMinimum)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(EffectDotSize)
+                .background(
+                    color = effectDotColor(enabled, colorScheme.primary, colorScheme.onSurfaceVariant),
+                    shape = CircleShape,
+                ),
+        )
     }
 }

@@ -41,6 +41,7 @@ import com.example.slipmat.nowplaying.DelayControls
 import com.example.slipmat.nowplaying.EqControls
 import com.example.slipmat.nowplaying.FilterControls
 import com.example.slipmat.nowplaying.NowPlayingViewModel
+import com.example.slipmat.ui.components.EffectDot
 import com.example.slipmat.ui.components.SegmentedToggle
 import com.example.slipmat.ui.theme.CornerExtraSmall
 import com.example.slipmat.ui.theme.blueprintGrid
@@ -137,6 +138,19 @@ internal fun PerformanceContent(
             onSelect = { selectedTab = it },
             label = PerformanceTab::label,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            trailing = { tab ->
+                val enabled = when (tab) {
+                    PerformanceTab.Filter -> filter.enabled
+                    PerformanceTab.Delay -> delay.enabled
+                    PerformanceTab.Eq -> eq.enabled
+                }
+                val onDisable = when (tab) {
+                    PerformanceTab.Filter -> actions.onFilterEnabledChange
+                    PerformanceTab.Delay -> actions.onDelayEnabledChange
+                    PerformanceTab.Eq -> actions.onEqEnabledChange
+                }
+                EffectDot(enabled = enabled, onClick = { onDisable(false) })
+            },
         )
         Column(
             modifier = Modifier
