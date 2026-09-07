@@ -7,11 +7,15 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,6 +42,9 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.core.data.eq.EqPreset
@@ -78,40 +85,46 @@ fun EqControls(
         val gridColor = MaterialTheme.colorScheme.onSurfaceVariant
         val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(EQ_CURVE_HEIGHT)
-                .pointerInput(Unit) {
-                    // The down event is consumed immediately, which claims the gesture before
-                    // the scrolling column this sits in can take it. The cost is that a drag
-                    // started on the curve will not scroll the page — the right trade for a
-                    // control whose whole purpose is being dragged.
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        down.consume()
-                        val band = nearestBand(down.position.x, size.width.toFloat())
-                        onGainChange(band, dbForY(down.position.y, size.height.toFloat()))
+        Box(modifier = Modifier.fillMaxWidth().height(EQ_CURVE_HEIGHT)) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        // The down event is consumed immediately, which claims the gesture before
+                        // the scrolling column this sits in can take it. The cost is that a drag
+                        // started on the curve will not scroll the page — the right trade for a
+                        // control whose whole purpose is being dragged.
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            down.consume()
+                            val band = nearestBand(down.position.x, size.width.toFloat())
+                            onGainChange(band, snappedDbForY(down.position.y, size.height.toFloat()))
 
-                        drag(down.id) { change ->
-                            change.consume()
-                            onGainChange(
-                                band,
-                                dbForY(change.position.y, size.height.toFloat()),
-                            )
+                            drag(down.id) { change ->
+                                change.consume()
+                                onGainChange(
+                                    band,
+                                    snappedDbForY(change.position.y, size.height.toFloat()),
+                                )
+                            }
                         }
-                    }
-                },
-        ) {
-            val handlePoints = EQ_BANDS.indices.map { band ->
-                Offset(
-                    x = size.width * curveFractionFor(EQ_BANDS[band]),
-                    y = yForDb(state.gainsDb.getOrElse(band) { 0f }, size.height),
-                )
+                    },
+            ) {
+                val handlePoints = EQ_BANDS.indices.map { band ->
+                    Offset(
+                        x = size.width * curveFractionFor(EQ_BANDS[band]),
+                        y = yForDb(state.gainsDb.getOrElse(band) { 0f }, size.height),
+                    )
+                }
+                drawZeroLine(gridColor)
+                drawSmoothCurve(handlePoints, curveColor)
+                drawHandles(handlePoints, curveColor, ringColor)
             }
-            drawZeroLine(gridColor)
-            drawSmoothCurve(handlePoints, curveColor)
-            drawHandles(handlePoints, curveColor, ringColor)
+
+            // Semantics only - no gesture handling of its own, so the Canvas above keeps doing
+            // the actual dragging (verified on device in R3.11). This is what makes each handle
+            // announce and adjust via TalkBack's "Adjust" gesture without a physical drag (§5.11).
+            EqHandleSemantics(gainsDb = state.gainsDb, onGainChange = onGainChange)
         }
 
         EqBandLabels(color = labelColor)
@@ -152,6 +165,55 @@ private fun EqBandLabels(color: Color, modifier: Modifier = Modifier) {
                     .roundToInt()
                     .coerceIn(0, constraints.maxWidth - placeable.width)
                 placeable.placeRelative(x, 0)
+            }
+        }
+    }
+}
+
+private val EQ_HANDLE_TOUCH_SIZE = 48.dp // §5.11's touch minimum, well past the 16dp visual handle.
+private const val EQ_HANDLE_STEPS = 23 // Whole-dB values from -12 to 12: 25 values, 23 between the ends.
+
+/**
+ * One accessibility node per handle (§5.11/R3.12), positioned at the same [curveFractionFor]/
+ * [yForDb] coordinates the Canvas draws its dot at. `setProgress` is what makes a handle operable
+ * without dragging - TalkBack's own "Adjust" gesture calls it with a target value already stepped
+ * to the nearest whole dB, so [snappedDbForY]'s rounding only need happen once, in the fallback
+ * `coerceIn`/`roundToInt` here for safety against out-of-range callers.
+ */
+@Composable
+private fun EqHandleSemantics(
+    gainsDb: List<Float>,
+    onGainChange: (band: Int, gainDb: Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Layout(
+        modifier = modifier.fillMaxSize(),
+        content = {
+            for (band in EQ_BANDS.indices) {
+                val gainDb = gainsDb.getOrElse(band) { 0f }
+                Box(
+                    modifier = Modifier
+                        .size(EQ_HANDLE_TOUCH_SIZE)
+                        .progressSemantics(gainDb, -EQ_MAX_GAIN_DB..EQ_MAX_GAIN_DB, steps = EQ_HANDLE_STEPS)
+                        .semantics {
+                            contentDescription = "${formatEqBandLabel(EQ_BANDS[band])} Hz band gain"
+                            setProgress { target ->
+                                onGainChange(band, target.roundToInt().toFloat().coerceIn(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB))
+                                true
+                            }
+                        },
+                )
+            }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(loose) }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placeables.forEachIndexed { index, placeable ->
+                val xFraction = curveFractionFor(EQ_BANDS[index])
+                val x = (xFraction * constraints.maxWidth - placeable.width / 2f).roundToInt()
+                val y = (yForDb(gainsDb.getOrElse(index) { 0f }, constraints.maxHeight.toFloat()) - placeable.height / 2f).roundToInt()
+                placeable.placeRelative(x, y)
             }
         }
     }
@@ -295,6 +357,14 @@ internal fun dbForY(y: Float, height: Float): Float {
     val fraction = (1f - (y / height).coerceIn(0f, 1f))
     return fraction * 2f * EQ_MAX_GAIN_DB - EQ_MAX_GAIN_DB
 }
+
+/**
+ * [dbForY], snapped to the nearest whole decibel (R3.12) - kept separate from [dbForY] itself so
+ * the continuous mapping stays available (and stays what [EqControlsTest]'s round-trip case checks)
+ * for anything that wants the unrounded value.
+ */
+internal fun snappedDbForY(y: Float, height: Float): Float =
+    dbForY(y, height).roundToInt().toFloat().coerceIn(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB)
 
 /** Maps decibels to a y coordinate: +[EQ_MAX_GAIN_DB] at the top, zero through the middle. */
 internal fun yForDb(db: Float, height: Float): Float {

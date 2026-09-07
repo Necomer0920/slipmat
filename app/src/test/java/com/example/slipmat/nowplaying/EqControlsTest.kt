@@ -44,6 +44,23 @@ class EqControlsTest {
     }
 
     @Test
+    fun `a drag snaps to the nearest whole dB`() {
+        // y values chosen to land between two whole-dB rungs, so rounding is the only thing that
+        // can be under test - an unsnapped dbForY would return a fractional value here.
+        val nearSevenDb = yForDb(7.4f, height)
+        assertEquals(7f, snappedDbForY(nearSevenDb, height), 0.001f)
+
+        val nearMinusThreeDb = yForDb(-2.6f, height)
+        assertEquals(-3f, snappedDbForY(nearMinusThreeDb, height), 0.001f)
+    }
+
+    @Test
+    fun `a drag past either edge clamps to plus or minus 12, not beyond`() {
+        assertEquals(12f, snappedDbForY(-50f, height), 0.001f)
+        assertEquals(-12f, snappedDbForY(height + 50f, height), 0.001f)
+    }
+
+    @Test
     fun `band labels read the spec's own text, not a typed guess`() {
         assertEquals("60", formatEqBandLabel(60f))
         assertEquals("130", formatEqBandLabel(130f))
