@@ -20,6 +20,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +41,7 @@ import com.example.slipmat.nowplaying.DelayControls
 import com.example.slipmat.nowplaying.EqControls
 import com.example.slipmat.nowplaying.FilterControls
 import com.example.slipmat.nowplaying.NowPlayingViewModel
+import com.example.slipmat.ui.components.SegmentedToggle
 import com.example.slipmat.ui.theme.CornerExtraSmall
 import com.example.slipmat.ui.theme.blueprintGrid
 
@@ -60,6 +64,13 @@ data class PerformanceActions(
     val onLoadEqPreset: (String) -> Unit = {},
     val onDeleteEqPreset: (String) -> Unit = {},
 )
+
+/** The three Performance tabs (§4.3) - which one is active is pure UI state, not DSP state. */
+internal enum class PerformanceTab(val label: String) {
+    Filter("Filter"),
+    Delay("Delay"),
+    Eq("EQ"),
+}
 
 /**
  * Filter/Delay/EQ, moved off Now Playing (R2.1) so effects don't compete with playback controls
@@ -116,8 +127,17 @@ internal fun PerformanceContent(
     actions: PerformanceActions,
     modifier: Modifier = Modifier,
 ) {
+    var selectedTab by rememberSaveable { mutableStateOf(PerformanceTab.Filter) }
+
     Column(modifier = modifier.fillMaxSize().blueprintGrid()) {
         PerformanceHeader(trackTitle = trackTitle, artworkUri = artworkUri, onBack = actions.onBack)
+        SegmentedToggle(
+            options = PerformanceTab.entries,
+            selected = selectedTab,
+            onSelect = { selectedTab = it },
+            label = PerformanceTab::label,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        )
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -125,28 +145,32 @@ internal fun PerformanceContent(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            FilterControls(
-                state = filter,
-                onEnabledChange = actions.onFilterEnabledChange,
-                onCutoffChange = actions.onFilterCutoffChange,
-                onModeChange = actions.onFilterModeChange,
-            )
-            DelayControls(
-                state = delay,
-                onEnabledChange = actions.onDelayEnabledChange,
-                onTimeChange = actions.onDelayTimeChange,
-                onFeedbackChange = actions.onDelayFeedbackChange,
-                onMixChange = actions.onDelayMixChange,
-            )
-            EqControls(
-                state = eq,
-                presets = eqPresets,
-                onEnabledChange = actions.onEqEnabledChange,
-                onGainChange = actions.onEqGainChange,
-                onSavePreset = actions.onSaveEqPreset,
-                onLoadPreset = actions.onLoadEqPreset,
-                onDeletePreset = actions.onDeleteEqPreset,
-            )
+            // Exactly one panel composed at a time (README: "never all three stacked/expanded at
+            // once") - the other two are not merely hidden, they do not exist in the tree.
+            when (selectedTab) {
+                PerformanceTab.Filter -> FilterControls(
+                    state = filter,
+                    onEnabledChange = actions.onFilterEnabledChange,
+                    onCutoffChange = actions.onFilterCutoffChange,
+                    onModeChange = actions.onFilterModeChange,
+                )
+                PerformanceTab.Delay -> DelayControls(
+                    state = delay,
+                    onEnabledChange = actions.onDelayEnabledChange,
+                    onTimeChange = actions.onDelayTimeChange,
+                    onFeedbackChange = actions.onDelayFeedbackChange,
+                    onMixChange = actions.onDelayMixChange,
+                )
+                PerformanceTab.Eq -> EqControls(
+                    state = eq,
+                    presets = eqPresets,
+                    onEnabledChange = actions.onEqEnabledChange,
+                    onGainChange = actions.onEqGainChange,
+                    onSavePreset = actions.onSaveEqPreset,
+                    onLoadPreset = actions.onLoadEqPreset,
+                    onDeletePreset = actions.onDeleteEqPreset,
+                )
+            }
         }
     }
 }
