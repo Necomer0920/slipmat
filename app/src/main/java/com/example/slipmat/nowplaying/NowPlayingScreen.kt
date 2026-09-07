@@ -157,6 +157,8 @@ fun NowPlayingScreen(
             )
 
             else -> PerformanceContent(
+                trackTitle = state.title,
+                artworkUri = state.artworkUri,
                 filter = filter,
                 delay = delay,
                 eq = eq,

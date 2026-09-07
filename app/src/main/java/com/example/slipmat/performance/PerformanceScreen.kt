@@ -2,18 +2,33 @@ package com.example.slipmat.performance
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.data.eq.EqPreset
 import com.example.slipmat.core.media.dsp.DelayState
 import com.example.slipmat.core.media.dsp.EqState
@@ -23,6 +38,7 @@ import com.example.slipmat.nowplaying.DelayControls
 import com.example.slipmat.nowplaying.EqControls
 import com.example.slipmat.nowplaying.FilterControls
 import com.example.slipmat.nowplaying.NowPlayingViewModel
+import com.example.slipmat.ui.theme.CornerExtraSmall
 
 /**
  * Everything the Performance screen can do, gathered so the body stays stateless (§5.13) - the
@@ -56,12 +72,15 @@ fun PerformanceScreen(
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = hiltViewModel(),
 ) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val delay by viewModel.delay.collectAsStateWithLifecycle()
     val eq by viewModel.eq.collectAsStateWithLifecycle()
     val eqPresets by viewModel.eqPresets.collectAsStateWithLifecycle()
 
     PerformanceContent(
+        trackTitle = state.title,
+        artworkUri = state.artworkUri,
         filter = filter,
         delay = delay,
         eq = eq,
@@ -87,6 +106,8 @@ fun PerformanceScreen(
 
 @Composable
 internal fun PerformanceContent(
+    trackTitle: String?,
+    artworkUri: String?,
     filter: FilterState,
     delay: DelayState,
     eq: EqState,
@@ -94,37 +115,84 @@ internal fun PerformanceContent(
     actions: PerformanceActions,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        TextButton(onClick = actions.onBack) {
-            Text("‹ Now playing")
+    Column(modifier = modifier.fillMaxSize()) {
+        PerformanceHeader(trackTitle = trackTitle, artworkUri = artworkUri, onBack = actions.onBack)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            FilterControls(
+                state = filter,
+                onEnabledChange = actions.onFilterEnabledChange,
+                onCutoffChange = actions.onFilterCutoffChange,
+                onModeChange = actions.onFilterModeChange,
+            )
+            DelayControls(
+                state = delay,
+                onEnabledChange = actions.onDelayEnabledChange,
+                onTimeChange = actions.onDelayTimeChange,
+                onFeedbackChange = actions.onDelayFeedbackChange,
+                onMixChange = actions.onDelayMixChange,
+            )
+            EqControls(
+                state = eq,
+                presets = eqPresets,
+                onEnabledChange = actions.onEqEnabledChange,
+                onGainChange = actions.onEqGainChange,
+                onSavePreset = actions.onSaveEqPreset,
+                onLoadPreset = actions.onLoadEqPreset,
+                onDeletePreset = actions.onDeleteEqPreset,
+            )
         }
-        FilterControls(
-            state = filter,
-            onEnabledChange = actions.onFilterEnabledChange,
-            onCutoffChange = actions.onFilterCutoffChange,
-            onModeChange = actions.onFilterModeChange,
+    }
+}
+
+private val PERFORMANCE_HEADER_HEIGHT = 48.dp
+private val PERFORMANCE_ARTWORK_CHIP_SIZE = 26.dp
+
+/**
+ * §4.3's top bar: back chevron, a 26dp artwork chip, the track title, and the `PERFORMANCE`
+ * eyebrow. The title carries `Modifier.weight(1f)` and the eyebrow doesn't, so a long title
+ * ellipsises in its own space (R3.2) rather than pushing the eyebrow off the edge.
+ */
+@Composable
+private fun PerformanceHeader(
+    trackTitle: String?,
+    artworkUri: String?,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().height(PERFORMANCE_HEADER_HEIGHT).padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+        val chipShape = RoundedCornerShape(CornerExtraSmall)
+        SubcomposeAsyncImage(
+            model = artworkUri,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(PERFORMANCE_ARTWORK_CHIP_SIZE).clip(chipShape),
+            error = { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainerHighest) {} },
+            loading = { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainerHighest) {} },
         )
-        DelayControls(
-            state = delay,
-            onEnabledChange = actions.onDelayEnabledChange,
-            onTimeChange = actions.onDelayTimeChange,
-            onFeedbackChange = actions.onDelayFeedbackChange,
-            onMixChange = actions.onDelayMixChange,
+        Text(
+            text = trackTitle ?: "Nothing playing",
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).padding(start = 12.dp, end = 12.dp),
         )
-        EqControls(
-            state = eq,
-            presets = eqPresets,
-            onEnabledChange = actions.onEqEnabledChange,
-            onGainChange = actions.onEqGainChange,
-            onSavePreset = actions.onSaveEqPreset,
-            onLoadPreset = actions.onLoadEqPreset,
-            onDeletePreset = actions.onDeleteEqPreset,
+        Text(
+            text = "PERFORMANCE",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
         )
     }
 }
