@@ -37,6 +37,7 @@ import android.view.HapticFeedbackConstants
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.isAtDetent
 import com.example.slipmat.core.media.playingBpm
+import com.example.slipmat.core.media.semitonesFor
 import com.example.slipmat.core.media.tempoPercent
 import com.example.slipmat.ui.theme.CornerLarge
 import com.example.slipmat.ui.theme.CornerTempoCard
@@ -123,6 +124,16 @@ fun PitchTempoControls(
                 },
                 onValueChangeFinished = onSliderChangeFinished,
                 modifier = Modifier.fillMaxWidth(),
+            )
+
+            Text(
+                text = if (keyLock) {
+                    "Key holds while tempo changes"
+                } else {
+                    "Pitch follows tempo · ${formatSemitones(semitonesFor(percent))}"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -249,3 +260,7 @@ internal fun formatTempoPercent(percent: Float): String =
 /** The speed multiplier the percentage corresponds to, e.g. `1.08×` at +8%. */
 internal fun formatSpeedMultiplier(percent: Float): String =
     String.format(Locale.US, "%.2f×", 1f + percent / 100f)
+
+/** Always signed, matching [formatTempoPercent]'s convention. */
+internal fun formatSemitones(semitones: Float): String =
+    String.format(Locale.US, "%+.1f st", semitones)

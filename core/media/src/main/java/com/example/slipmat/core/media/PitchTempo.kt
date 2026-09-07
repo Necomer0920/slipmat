@@ -1,6 +1,7 @@
 package com.example.slipmat.core.media
 
 import kotlin.math.abs
+import kotlin.math.log2
 import kotlin.math.roundToInt
 
 /**
@@ -84,6 +85,15 @@ fun tempoPercent(sliderValue: Float, range: PitchRange): Float =
  */
 fun sliderValueForPercent(percent: Float, range: PitchRange): Float =
     (percent / range.percent).coerceIn(-1f, 1f)
+
+/**
+ * The pitch shift, in semitones, that a *free* (key-unlocked) tempo change carries with it —
+ * shown in the key status line when key lock is off. Deliberately not `percent / 100 * 12`: a
+ * linear approximation agrees with the real, logarithmic pitch-frequency relationship only at
+ * zero and drifts increasingly either side of it, which is exactly the asymmetry the ledger's
+ * worked example checks for (+8% is +1.3 st, -8% is -1.4 st - not a mirrored ±1.3).
+ */
+fun semitonesFor(percent: Float): Float = 12f * log2(1f + percent / 100f)
 
 /**
  * The playing tempo of a track whose source tempo is known.

@@ -29,4 +29,11 @@ class PitchTempoControlsTest {
         assertTrue(formatTempoPercent(8f).startsWith("+"))
         assertTrue(formatTempoPercent(0f).startsWith("+"))
     }
+
+    @Test
+    fun `the key status line's semitone figure is signed like everything else here`() {
+        assertEquals("+1.3 st", formatSemitones(1.3f))
+        assertEquals("-1.4 st", formatSemitones(-1.4f))
+        assertEquals("+0.0 st", formatSemitones(0f))
+    }
 }

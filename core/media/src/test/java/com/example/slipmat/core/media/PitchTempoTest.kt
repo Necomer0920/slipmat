@@ -122,6 +122,27 @@ class DetentTest {
     }
 }
 
+class SemitonesTest {
+
+    @Test
+    fun `plus 8 percent is plus 1_3 semitones`() {
+        assertEquals(1.3f, semitonesFor(8f), 0.05f)
+    }
+
+    @Test
+    fun `minus 8 percent is minus 1_4 semitones, not the mirror of plus 8`() {
+        // The asymmetry is the point: log2 is not linear, so equal-and-opposite percentages do not
+        // give equal-and-opposite semitones. A linear approximation (percent/100*12) would return
+        // exactly -1.3f here instead of the true -1.4f.
+        assertEquals(-1.4f, semitonesFor(-8f), 0.05f)
+    }
+
+    @Test
+    fun `zero percent is exactly zero semitones`() {
+        assertEquals(0f, semitonesFor(0f), 0.0001f)
+    }
+}
+
 class BpmReadoutTest {
 
     @Test
