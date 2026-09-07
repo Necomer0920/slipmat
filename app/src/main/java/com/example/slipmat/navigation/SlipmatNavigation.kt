@@ -1,17 +1,18 @@
 package com.example.slipmat.navigation
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -31,6 +32,7 @@ import com.example.slipmat.library.LibraryScreen
 import com.example.slipmat.nowplaying.MiniPlayer
 import com.example.slipmat.nowplaying.NowPlayingScreen
 import com.example.slipmat.nowplaying.QueueScreen
+import com.example.slipmat.ui.components.PillTab
 
 /** The four browse modes. */
 enum class BrowseTab(val route: String, val label: String) {
@@ -83,8 +85,25 @@ fun SlipmatNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val onNowPlaying = currentRoute == Routes.NOW_PLAYING || currentRoute == Routes.QUEUE
+    val onBrowseTab = BrowseTab.entries.any { it.route == currentRoute }
 
     Column(modifier = modifier.fillMaxSize()) {
+        // Only above the four browse tabs themselves — a detail screen carries its own title and
+        // back arrow (DetailScaffold), so stacking this on top of that would double up chrome.
+        if (onBrowseTab) {
+            LibraryTabRow(
+                selected = BrowseTab.entries.first { it.route == currentRoute },
+                onSelect = { tab ->
+                    navController.navigate(tab.route) {
+                        // Switching tabs must not stack them up: back from any tab returns to the
+                        // start destination rather than replaying every tab visited.
+                        popUpTo(BrowseTab.Tracks.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+            )
+        }
         NavHost(
             navController = navController,
             startDestination = BrowseTab.Tracks.route,
@@ -150,29 +169,23 @@ fun SlipmatNavHost(
                 onClick = { navController.navigate(Routes.NOW_PLAYING) },
                 viewModel = hiltViewModel(sharedOwner),
             )
-            BrowseBottomBar(navController, currentRoute)
         }
     }
 }
 
+/** The four browse modes, as a pill tab row — replaces the bottom `NavigationBar` (§4.1). */
 @Composable
-private fun BrowseBottomBar(navController: NavHostController, currentRoute: String?) {
-    NavigationBar {
+private fun LibraryTabRow(
+    selected: BrowseTab,
+    onSelect: (BrowseTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         BrowseTab.entries.forEach { tab ->
-            NavigationBarItem(
-                selected = currentRoute == tab.route,
-                onClick = {
-                    navController.navigate(tab.route) {
-                        // Switching tabs must not stack them up: back from any tab returns to the
-                        // start destination rather than replaying every tab visited.
-                        popUpTo(BrowseTab.Tracks.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = {},
-                label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
-            )
+            PillTab(selected = tab == selected, onClick = { onSelect(tab) }, label = tab.label)
         }
     }
 }
