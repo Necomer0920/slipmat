@@ -80,7 +80,6 @@ data class NowPlayingActions(
     val onSliderChange: (Float) -> Unit = {},
     val onSliderChangeFinished: () -> Unit = {},
     val onKeyLockChange: (Boolean) -> Unit = {},
-    val onRangeChange: (PitchRange) -> Unit = {},
 )
 
 @Composable
@@ -123,7 +122,6 @@ fun NowPlayingScreen(
             onSliderChange = viewModel::onSliderChange,
             onSliderChangeFinished = viewModel::onSliderChangeFinished,
             onKeyLockChange = viewModel::onKeyLockChange,
-            onRangeChange = viewModel::onRangeChange,
         ),
         modifier = modifier,
     )
@@ -139,7 +137,7 @@ internal fun NowPlayingContent(
     sliderValue: Float = 0f,
     waveform: FloatArray? = null,
     keyLock: Boolean = true,
-    pitchRange: PitchRange = PitchRange.Narrow,
+    pitchRange: PitchRange = PitchRange.Standard,
     sourceBpm: Float? = null,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -199,7 +197,6 @@ internal fun NowPlayingContent(
                 onSliderChange = actions.onSliderChange,
                 onSliderChangeFinished = actions.onSliderChangeFinished,
                 onKeyLockChange = actions.onKeyLockChange,
-                onRangeChange = actions.onRangeChange,
             )
             TransportControls(state = state, actions = actions)
             ModeControls(state = state, actions = actions)

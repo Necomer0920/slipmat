@@ -94,6 +94,13 @@ class DetentTest {
         assertEquals(-8f, tempoPercent(-1f, PitchRange.Narrow), 0.0001f)
         assertEquals(16f, tempoPercent(1f, PitchRange.Medium), 0.0001f)
     }
+
+    @Test
+    fun `the redesign's fixed range reads plus-or-minus 30 percent at full travel`() {
+        // §5.2 - the README's own worked number for the ±30% range this screen is fixed to.
+        assertEquals(30f, tempoPercent(1f, PitchRange.Standard), 0.0001f)
+        assertEquals(-30f, tempoPercent(-1f, PitchRange.Standard), 0.0001f)
+    }
 }
 
 class BpmReadoutTest {

@@ -1,7 +1,6 @@
 package com.example.slipmat.nowplaying
 
 import androidx.lifecycle.ViewModel
-import com.example.slipmat.core.data.settings.PlaybackSettings
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.PlaybackController
 import com.example.slipmat.core.media.dsp.DelayState
@@ -36,7 +35,6 @@ import javax.inject.Inject
 @HiltViewModel
 class NowPlayingViewModel @Inject constructor(
     private val playback: PlaybackController,
-    private val settings: PlaybackSettings,
     private val waveforms: WaveformSource,
     private val presets: EqPresetStore,
 ) : ViewModel() {
@@ -79,9 +77,12 @@ class NowPlayingViewModel @Inject constructor(
     /** Performance state, so it sits with the fader in the controller rather than in DataStore. */
     val keyLock: StateFlow<Boolean> = playback.keyLock
 
-    val pitchRange: StateFlow<PitchRange> = settings.pitchRangeName
-        .map { name -> PitchRange.entries.firstOrNull { it.name == name } ?: PitchRange.Narrow }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PitchRange.Narrow)
+    /**
+     * Fixed at [PitchRange.Standard] for the redesign (§5.2) - no control offers a way to change
+     * it any more. `PlaybackSettings.pitchRangeName` is left in place, unread here, for a possible
+     * future Settings screen; [onRangeChange] is removed rather than left to silently do nothing.
+     */
+    val pitchRange: StateFlow<PitchRange> = MutableStateFlow(PitchRange.Standard).asStateFlow()
 
     val state: StateFlow<PlayerState> = playback.state
 
@@ -207,12 +208,6 @@ class NowPlayingViewModel @Inject constructor(
         playback.setKeyLock(enabled)
         // Applied at once, so the switch takes effect on the track already playing.
         playback.applyTempo(pitchRange.value)
-    }
-
-    fun onRangeChange(range: PitchRange) {
-        // The slider stays where it is, so the same position now means a different percentage.
-        playback.applyTempo(range)
-        viewModelScope.launch { settings.setPitchRangeName(range.name) }
     }
 
     private var lastAppliedAtMs = 0L

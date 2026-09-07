@@ -13,6 +13,9 @@ enum class PitchRange(val percent: Float, val label: String) {
     Narrow(8f, "±8%"),
     Medium(16f, "±16%"),
     Wide(50f, "±50%"),
+
+    /** The redesign's fixed range (§5.2) — no control offers a way to choose a different one. */
+    Standard(30f, "±30%"),
 }
 
 /**

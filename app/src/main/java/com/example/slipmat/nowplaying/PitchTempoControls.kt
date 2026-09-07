@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -25,7 +23,8 @@ import com.example.slipmat.core.media.tempoPercent
 import java.util.Locale
 
 /**
- * The pitch/tempo control: a slider, a key-lock switch, and a range selector.
+ * The pitch/tempo control: a slider and a key-lock switch, over the fixed ±30% range (§5.2) - no
+ * control offers a way to choose a different one any more.
  *
  * Stateless so it can be previewed and screenshot-tested; the caller owns the slider position.
  */
@@ -38,7 +37,6 @@ fun PitchTempoControls(
     onSliderChange: (Float) -> Unit,
     onSliderChangeFinished: () -> Unit,
     onKeyLockChange: (Boolean) -> Unit,
-    onRangeChange: (PitchRange) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val view = LocalView.current
@@ -92,40 +90,14 @@ fun PitchTempoControls(
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "Key lock",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Switch(checked = keyLock, onCheckedChange = onKeyLockChange)
-            }
-
-            // Unlabelled percentages read as a mystery scale. Naming the row says what they do:
-            // they set how far the slider above can pull the tempo.
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Range",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(end = 4.dp),
-                )
-                PitchRange.entries.forEach { option ->
-                    FilterChip(
-                        selected = option == range,
-                        onClick = { onRangeChange(option) },
-                        label = { Text(option.label, style = MaterialTheme.typography.labelSmall) },
-                    )
-                }
-            }
+            Text(
+                text = "Key lock",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Switch(checked = keyLock, onCheckedChange = onKeyLockChange)
         }
     }
 }

@@ -93,18 +93,6 @@ class FakePlaybackController : PlaybackController {
     }
 }
 
-/** In-memory settings, so the view model can be tested without a Context or DataStore. */
-class FakePlaybackSettings(
-    rangeInitial: String? = null,
-) : com.example.slipmat.core.data.settings.PlaybackSettings {
-
-    private val _range = MutableStateFlow(rangeInitial)
-
-    override val pitchRangeName: kotlinx.coroutines.flow.Flow<String?> = _range
-
-    override suspend fun setPitchRangeName(name: String) { _range.value = name }
-}
-
 /** In-memory EQ presets, so preset behaviour can be tested without a database. */
 class FakeEqPresetStore : com.example.slipmat.core.data.eq.EqPresetStore {
 

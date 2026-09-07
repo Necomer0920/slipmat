@@ -15,7 +15,6 @@ class NowPlayingViewModelTest {
     val mainDispatcher = MainDispatcherRule()
 
     private val playback = FakePlaybackController()
-    private val settings = FakePlaybackSettings()
     private val presets = FakeEqPresetStore()
     /**
      * Built lazily, so construction happens inside the test method.
@@ -27,7 +26,7 @@ class NowPlayingViewModelTest {
      * state back from a fake.
      */
     private val viewModel by lazy {
-        NowPlayingViewModel(playback, settings, FakeWaveformSource(), presets)
+        NowPlayingViewModel(playback, FakeWaveformSource(), presets)
     }
 
     @Test
@@ -81,7 +80,7 @@ class NowPlayingViewModelTest {
         // centre over audio still running at 0.92x, and the readout would claim +0.0%.
         viewModel.onSliderChange(-1f)
 
-        val rebuilt = NowPlayingViewModel(playback, settings, FakeWaveformSource(), presets)
+        val rebuilt = NowPlayingViewModel(playback, FakeWaveformSource(), presets)
 
         assertEquals(-1f, rebuilt.sliderValue.value, 0.0001f)
     }
@@ -105,8 +104,8 @@ class NowPlayingViewModelTest {
 
         viewModel.onSliderChangeFinished()
 
-        // Full slow travel on the default ±8% range, key lock on: tempo drops, key holds.
-        assertEquals(listOf("speed=0.92,pitch=1.0"), playback.calls)
+        // Full slow travel on the fixed ±30% range (§5.2), key lock on: tempo drops, key holds.
+        assertEquals(listOf("speed=0.7,pitch=1.0"), playback.calls)
     }
 
     @Test
