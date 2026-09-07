@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.core.media.dsp.FILTER_MAX_HZ
@@ -53,6 +55,8 @@ fun FilterControls(
             label = { mode -> if (mode == FilterMode.LowPass) "Low-pass" else "High-pass" },
             modifier = Modifier.width(240.dp),
         )
+
+        FilterResponseCurve(cutoffPosition = state.sliderPosition, mode = state.mode)
 
         Text(text = formatCutoff(state.cutoffHz), style = MaterialTheme.typography.displayMedium)
 
@@ -125,6 +129,49 @@ private fun FilterCutoffTrack(
         }
 
         drawCircle(color = primary, radius = FILTER_THUMB_SIZE.toPx() / 2f, center = Offset(thumbX, centerY))
+    }
+}
+
+private val FILTER_CURVE_HEIGHT = 56.dp
+private const val FILTER_CURVE_FLOOR = 0.08f
+private const val FILTER_CURVE_POINT_COUNT = 48
+
+/**
+ * Decorative response points (§4.3), not a real dB curve - only the shape needs to be right, since
+ * nothing but a stroked line renders from it. `y` is a plain 0f (fully cut) .. 1f (fully passed)
+ * amount; the corner sits exactly at `cutoffPosition`, and it never quite reaches zero so the line
+ * stays visible even fully swept to one edge.
+ */
+internal fun filterResponseCurve(
+    cutoffPosition: Float,
+    mode: FilterMode,
+    pointCount: Int = FILTER_CURVE_POINT_COUNT,
+): List<Float> {
+    val cutoff = cutoffPosition.coerceIn(0f, 1f)
+    return List(pointCount) { i ->
+        val x = i / (pointCount - 1).toFloat()
+        val passed = when (mode) {
+            FilterMode.LowPass -> if (x <= cutoff) 1f else 1f - (x - cutoff) / (1f - cutoff).coerceAtLeast(0.0001f)
+            FilterMode.HighPass -> if (x >= cutoff) 1f else x / cutoff.coerceAtLeast(0.0001f)
+        }
+        FILTER_CURVE_FLOOR + passed.coerceIn(0f, 1f) * (1f - FILTER_CURVE_FLOOR)
+    }
+}
+
+/** The response curve's shape follows [filterResponseCurve]; only the stroke colour lives here. */
+@Composable
+private fun FilterResponseCurve(cutoffPosition: Float, mode: FilterMode, modifier: Modifier = Modifier) {
+    val primary = MaterialTheme.colorScheme.primary
+    val points = filterResponseCurve(cutoffPosition, mode)
+
+    Canvas(modifier = modifier.fillMaxWidth().height(FILTER_CURVE_HEIGHT)) {
+        val path = Path()
+        points.forEachIndexed { i, y ->
+            val x = i / (points.size - 1).toFloat() * size.width
+            val plotY = (1f - y) * size.height
+            if (i == 0) path.moveTo(x, plotY) else path.lineTo(x, plotY)
+        }
+        drawPath(path, color = primary, style = Stroke(width = 2.dp.toPx()))
     }
 }
 
