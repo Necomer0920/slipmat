@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import com.example.slipmat.ui.theme.accentShadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -355,6 +356,8 @@ private fun TransportControls(
             description = if (state.isPlaying) "Pause" else "Play",
             onClick = actions.onPlayPause,
             enabled = state.hasMedia,
+            // The one transport control with a coloured halo — §3.4's play-button shadow.
+            modifier = Modifier.accentShadow(),
         )
         TransportButton(
             icon = Icons.Filled.SkipNext,
@@ -446,8 +449,9 @@ private fun TransportButton(
     description: String,
     onClick: () -> Unit,
     enabled: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    IconButton(onClick = onClick, enabled = enabled) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
         Icon(imageVector = icon, contentDescription = description)
     }
 }
