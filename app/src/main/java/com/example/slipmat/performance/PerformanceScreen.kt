@@ -138,7 +138,6 @@ internal fun PerformanceContent(
                 PerformanceTab.Eq -> EqControls(
                     state = eq,
                     presets = eqPresets,
-                    onEnabledChange = actions.onEqEnabledChange,
                     onGainChange = actions.onEqGainChange,
                     onSavePreset = actions.onSaveEqPreset,
                     onLoadPreset = actions.onLoadEqPreset,

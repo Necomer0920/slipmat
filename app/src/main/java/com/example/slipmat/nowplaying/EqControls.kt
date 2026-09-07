@@ -20,7 +20,6 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -38,6 +37,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.core.data.eq.EqPreset
@@ -45,30 +45,23 @@ import com.example.slipmat.core.media.dsp.EQ_BANDS
 import com.example.slipmat.core.media.dsp.EQ_MAX_GAIN_DB
 import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.curveFractionFor
-import com.example.slipmat.core.media.dsp.eqCurveDb
+import java.util.Locale
+import kotlin.math.roundToInt
+
+private val EQ_CURVE_HEIGHT = 160.dp
+private val EQ_HANDLE_RADIUS = 8.dp // 16dp handle (§4.3)
+private val EQ_HANDLE_RING_WIDTH = 2.dp
 
 /**
- * The rate the curve is *drawn* at, which need not be the rate being played.
- *
- * A peaking band's shape barely moves between 44.1 and 48 kHz, and the alternative is plumbing the
- * stream's format up to the UI so a line can be a fraction of a pixel different.
- */
-private const val CURVE_SAMPLE_RATE = 44_100
-
-/** Points along the curve. Enough to look smooth; far fewer than the pixels it is stretched over. */
-private const val CURVE_POINTS = 160
-
-/**
- * The multiband EQ: a switch and the response curve.
- *
- * The curve is the cascade's **actual** response, not a line drawn through the handles. The handles
- * sit at the gain each band was given, so where two neighbours are both boosted the curve rides
- * above them — which is what is really happening, and what every EQ that draws a curve shows.
+ * The multiband EQ (§4.3): a 160dp curve area, a dashed zero line, a smooth cubic through the eight
+ * handles, and frequency labels from [EQ_BANDS] beneath. No enable switch on the curve itself - as
+ * with the filter and delay panels, §5.1 makes the tab's own state dot the only on/off control, so
+ * dragging a handle is itself what turns EQ on (R3.6). The preset row below keeps its own gate for
+ * now; R3.13 replaces it with the spec's preset chips.
  */
 @Composable
 fun EqControls(
     state: EqState,
-    onEnabledChange: (Boolean) -> Unit,
     onGainChange: (band: Int, gainDb: Float) -> Unit,
     modifier: Modifier = Modifier,
     presets: List<EqPreset> = emptyList(),
@@ -78,53 +71,50 @@ fun EqControls(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(text = "EQ", style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = state.enabled, onCheckedChange = onEnabledChange)
-        }
+        val curveColor = MaterialTheme.colorScheme.primary
+        val ringColor = MaterialTheme.colorScheme.surface
+        val gridColor = MaterialTheme.colorScheme.onSurfaceVariant
+        val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-        AnimatedVisibility(visible = state.enabled) {
-            val curve = remember(state.gainsDb) {
-                eqCurveDb(state.gains(), CURVE_SAMPLE_RATE, CURVE_POINTS)
-            }
-            val curveColor = MaterialTheme.colorScheme.primary
-            val gridColor = MaterialTheme.colorScheme.onSurfaceVariant
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(EQ_CURVE_HEIGHT)
+                .pointerInput(Unit) {
+                    // The down event is consumed immediately, which claims the gesture before
+                    // the scrolling column this sits in can take it. The cost is that a drag
+                    // started on the curve will not scroll the page — the right trade for a
+                    // control whose whole purpose is being dragged.
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        val band = nearestBand(down.position.x, size.width.toFloat())
+                        onGainChange(band, dbForY(down.position.y, size.height.toFloat()))
 
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .pointerInput(Unit) {
-                        // The down event is consumed immediately, which claims the gesture before
-                        // the scrolling column this sits in can take it. The cost is that a drag
-                        // started on the curve will not scroll the page — the right trade for a
-                        // control whose whole purpose is being dragged.
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            down.consume()
-                            val band = nearestBand(down.position.x, size.width.toFloat())
-                            onGainChange(band, dbForY(down.position.y, size.height.toFloat()))
-
-                            drag(down.id) { change ->
-                                change.consume()
-                                onGainChange(
-                                    band,
-                                    dbForY(change.position.y, size.height.toFloat()),
-                                )
-                            }
+                        drag(down.id) { change ->
+                            change.consume()
+                            onGainChange(
+                                band,
+                                dbForY(change.position.y, size.height.toFloat()),
+                            )
                         }
-                    },
-            ) {
-                drawZeroLine(gridColor)
-                drawCurve(curve, curveColor)
-                drawHandles(state.gainsDb, curveColor)
+                    }
+                },
+        ) {
+            val handlePoints = EQ_BANDS.indices.map { band ->
+                Offset(
+                    x = size.width * curveFractionFor(EQ_BANDS[band]),
+                    y = yForDb(state.gainsDb.getOrElse(band) { 0f }, size.height),
+                )
             }
+            drawZeroLine(gridColor)
+            drawSmoothCurve(handlePoints, curveColor)
+            drawHandles(handlePoints, curveColor, ringColor)
         }
+
+        EqBandLabels(color = labelColor)
 
         AnimatedVisibility(visible = state.enabled) {
             PresetRow(
@@ -134,6 +124,47 @@ fun EqControls(
                 onDelete = onDeletePreset,
             )
         }
+    }
+}
+
+/**
+ * Frequency labels from [EQ_BANDS] (§5.10), one under each handle. A custom [Layout] rather than a
+ * plain `Row` because the bands are log-spaced, not even - each label's centre must land on the
+ * same x [curveFractionFor] puts its handle at, not on a fraction of the row's child count.
+ */
+@Composable
+private fun EqBandLabels(color: Color, modifier: Modifier = Modifier) {
+    Layout(
+        modifier = modifier.fillMaxWidth(),
+        content = {
+            for (hz in EQ_BANDS) {
+                Text(text = formatEqBandLabel(hz), style = MaterialTheme.typography.labelSmall, color = color)
+            }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(loose) }
+        val height = placeables.maxOfOrNull { it.height } ?: 0
+        layout(constraints.maxWidth, height) {
+            placeables.forEachIndexed { index, placeable ->
+                val fraction = curveFractionFor(EQ_BANDS[index])
+                val x = (fraction * constraints.maxWidth - placeable.width / 2f)
+                    .roundToInt()
+                    .coerceIn(0, constraints.maxWidth - placeable.width)
+                placeable.placeRelative(x, 0)
+            }
+        }
+    }
+}
+
+/** "1.5k"/"7k", never "1.5000k" or "7.0k" - a trailing `.0` reads as a number someone typed. */
+internal fun formatEqBandLabel(hz: Float): String {
+    if (hz < 1000f) return hz.roundToInt().toString()
+    val k = hz / 1000f
+    return if (k == k.roundToInt().toFloat()) {
+        "${k.roundToInt()}k"
+    } else {
+        String.format(Locale.US, "%.1fk", k)
     }
 }
 
@@ -212,23 +243,36 @@ private fun DrawScope.drawZeroLine(color: Color) {
     )
 }
 
-private fun DrawScope.drawCurve(curveDb: FloatArray, color: Color) {
-    if (curveDb.size < 2) return
-
-    val path = Path()
-    for (point in curveDb.indices) {
-        val x = size.width * point / (curveDb.size - 1)
-        val y = yForDb(curveDb[point])
-        if (point == 0) path.moveTo(x, y) else path.lineTo(x, y)
+/**
+ * A smooth curve through the handle points (§4.3: "a smooth cubic through all eight points"),
+ * decorative rather than the cascade's literal response - a uniform Catmull-Rom spline converted to
+ * cubic Bezier segments, the standard technique for a curve that passes through every point rather
+ * than merely being shaped by them.
+ */
+private fun DrawScope.drawSmoothCurve(points: List<Offset>, color: Color) {
+    if (points.size < 2) return
+    val path = Path().apply { moveTo(points[0].x, points[0].y) }
+    for (i in 0 until points.size - 1) {
+        val p0 = points.getOrElse(i - 1) { points[i] }
+        val p1 = points[i]
+        val p2 = points[i + 1]
+        val p3 = points.getOrElse(i + 2) { points[i + 1] }
+        val control1 = p1 + (p2 - p0) / 6f
+        val control2 = p2 - (p3 - p1) / 6f
+        path.cubicTo(control1.x, control1.y, control2.x, control2.y, p2.x, p2.y)
     }
     drawPath(path = path, color = color, style = Stroke(width = 3f))
 }
 
-private fun DrawScope.drawHandles(gainsDb: List<Float>, color: Color) {
-    for (band in EQ_BANDS.indices) {
-        val x = size.width * curveFractionFor(EQ_BANDS[band])
-        val y = yForDb(gainsDb.getOrElse(band) { 0f })
-        drawCircle(color = color, radius = 7f, center = Offset(x, y))
+private fun DrawScope.drawHandles(points: List<Offset>, fill: Color, ring: Color) {
+    for (point in points) {
+        drawCircle(color = fill, radius = EQ_HANDLE_RADIUS.toPx(), center = point)
+        drawCircle(
+            color = ring,
+            radius = EQ_HANDLE_RADIUS.toPx() - EQ_HANDLE_RING_WIDTH.toPx() / 2f,
+            center = point,
+            style = Stroke(width = EQ_HANDLE_RING_WIDTH.toPx()),
+        )
     }
 }
 
@@ -246,15 +290,15 @@ private fun nearestBand(x: Float, width: Float): Int {
 }
 
 /** The inverse of [yForDb], for turning a finger position back into a gain. */
-private fun dbForY(y: Float, height: Float): Float {
+internal fun dbForY(y: Float, height: Float): Float {
     if (height <= 0f) return 0f
     val fraction = (1f - (y / height).coerceIn(0f, 1f))
     return fraction * 2f * EQ_MAX_GAIN_DB - EQ_MAX_GAIN_DB
 }
 
 /** Maps decibels to a y coordinate: +[EQ_MAX_GAIN_DB] at the top, zero through the middle. */
-private fun DrawScope.yForDb(db: Float): Float {
+internal fun yForDb(db: Float, height: Float): Float {
     val fraction = (db.coerceIn(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) + EQ_MAX_GAIN_DB) /
         (2f * EQ_MAX_GAIN_DB)
-    return size.height * (1f - fraction)
+    return height * (1f - fraction)
 }
