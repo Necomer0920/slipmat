@@ -1,12 +1,16 @@
 package com.example.slipmat.nowplaying
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +19,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +26,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import android.view.HapticFeedbackConstants
@@ -103,8 +110,8 @@ fun PitchTempoControls(
                 KeyLockPill(locked = keyLock, onClick = { onKeyLockChange(!keyLock) })
             }
 
-            Slider(
-                value = sliderValue,
+            TempoTrack(
+                sliderValue = sliderValue,
                 onValueChange = { raw ->
                     val nowAtDetent = isAtDetent(raw)
                     // A tick as the slider snaps home, so centre can be found without looking.
@@ -115,10 +122,87 @@ fun PitchTempoControls(
                     onSliderChange(raw)
                 },
                 onValueChangeFinished = onSliderChangeFinished,
-                valueRange = -1f..1f,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+private val TEMPO_TRACK_TOUCH_HEIGHT = 48.dp
+private val TEMPO_RAIL_HEIGHT = 4.dp
+private val TEMPO_THUMB_SIZE = 20.dp
+private val TEMPO_DETENT_WIDTH = 2.dp
+private val TEMPO_DETENT_HEIGHT = 12.dp
+private const val TEMPO_FILL_ALPHA = 0.55f
+
+/**
+ * §4.2's tempo track: a 4dp rail, a centre detent mark, a 55%-opacity fill running from centre to
+ * the thumb rather than from either end, and a 20dp thumb. Custom-drawn rather than a styled M3
+ * `Slider` - the centre-anchored fill and detent tick have no equivalent in `SliderDefaults`.
+ */
+@Composable
+private fun TempoTrack(
+    sliderValue: Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val rail = MaterialTheme.colorScheme.surfaceContainerHighest
+    val detentColor = MaterialTheme.colorScheme.outline
+
+    fun valueAt(x: Float, width: Float): Float =
+        ((x / width) * 2f - 1f).coerceIn(-1f, 1f)
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(TEMPO_TRACK_TOUCH_HEIGHT)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    onValueChange(valueAt(offset.x, size.width.toFloat()))
+                    onValueChangeFinished()
+                }
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset -> onValueChange(valueAt(offset.x, size.width.toFloat())) },
+                    onHorizontalDrag = { change, _ ->
+                        change.consume()
+                        onValueChange(valueAt(change.position.x, size.width.toFloat()))
+                    },
+                    onDragEnd = onValueChangeFinished,
+                    onDragCancel = onValueChangeFinished,
+                )
+            },
+    ) {
+        val centerY = size.height / 2f
+        val railTopLeft = Offset(0f, centerY - TEMPO_RAIL_HEIGHT.toPx() / 2f)
+        val railSize = Size(size.width, TEMPO_RAIL_HEIGHT.toPx())
+        val railRadius = CornerRadius(TEMPO_RAIL_HEIGHT.toPx() / 2f)
+
+        drawRoundRect(color = rail, topLeft = railTopLeft, size = railSize, cornerRadius = railRadius)
+
+        val centerX = size.width / 2f
+        val thumbX = ((sliderValue.coerceIn(-1f, 1f) + 1f) / 2f) * size.width
+        val fillLeft = minOf(centerX, thumbX)
+        val fillRight = maxOf(centerX, thumbX)
+        if (fillRight > fillLeft) {
+            drawRoundRect(
+                color = primary.copy(alpha = TEMPO_FILL_ALPHA),
+                topLeft = Offset(fillLeft, railTopLeft.y),
+                size = Size(fillRight - fillLeft, railSize.height),
+                cornerRadius = railRadius,
+            )
+        }
+
+        drawRect(
+            color = detentColor,
+            topLeft = Offset(centerX - TEMPO_DETENT_WIDTH.toPx() / 2f, centerY - TEMPO_DETENT_HEIGHT.toPx() / 2f),
+            size = Size(TEMPO_DETENT_WIDTH.toPx(), TEMPO_DETENT_HEIGHT.toPx()),
+        )
+
+        drawCircle(color = primary, radius = TEMPO_THUMB_SIZE.toPx() / 2f, center = Offset(thumbX, centerY))
     }
 }
 

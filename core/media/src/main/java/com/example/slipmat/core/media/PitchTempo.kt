@@ -29,8 +29,17 @@ data class SpeedPitch(val speed: Float, val pitch: Float) {
     }
 }
 
-/** Slider positions within this of centre snap back to exactly normal. */
-const val DETENT_THRESHOLD = 0.02f
+/**
+ * Slider positions within this of centre snap back to exactly normal.
+ *
+ * §5.2's detent is specified as a *percentage* width — "within `range × 0.035` of zero" — not a
+ * slider-fraction one. Since `tempoPercent = sliderValue × range.percent`, the percentage
+ * condition `|sliderValue × range.percent| < range.percent × 0.035` reduces to `|sliderValue| <
+ * 0.035` for any range: the range cancels out, so one fraction-space constant is exactly
+ * equivalent to the percentage-space rule at every range, not just the fixed one this redesign
+ * uses.
+ */
+const val DETENT_THRESHOLD = 0.035f
 
 /**
  * Turns a slider position into player parameters.
@@ -68,6 +77,13 @@ fun isAtDetent(sliderValue: Float): Boolean = snapToDetent(sliderValue) == 0f
 /** The signed percentage change, for display. `+0.0%` at centre, never `-0.0%`. */
 fun tempoPercent(sliderValue: Float, range: PitchRange): Float =
     snapToDetent(sliderValue) * range.percent
+
+/**
+ * Inverse of [tempoPercent]: the slider position that would show this percentage, for placing the
+ * tempo track's thumb from a percentage rather than the other way around.
+ */
+fun sliderValueForPercent(percent: Float, range: PitchRange): Float =
+    (percent / range.percent).coerceIn(-1f, 1f)
 
 /**
  * The playing tempo of a track whose source tempo is known.

@@ -101,6 +101,25 @@ class DetentTest {
         assertEquals(30f, tempoPercent(1f, PitchRange.Standard), 0.0001f)
         assertEquals(-30f, tempoPercent(-1f, PitchRange.Standard), 0.0001f)
     }
+
+    @Test
+    fun `position and percentage round-trip through each other at the fixed range`() {
+        for (percent in listOf(-30f, -12.5f, -1.05f, 0f, 4f, 17.3f, 30f)) {
+            val sliderValue = sliderValueForPercent(percent, PitchRange.Standard)
+            assertEquals(percent, tempoPercent(sliderValue, PitchRange.Standard), 0.01f)
+        }
+    }
+
+    @Test
+    fun `at range 30 the detent is exactly 1_05 points wide, not the old 8-percent-range width`() {
+        // range x 0.035 = 30 x 0.035 = 1.05 - the README's own worked number (§4.2).
+        assertEquals(0f, tempoPercent(sliderValueForPercent(1.049f, PitchRange.Standard), PitchRange.Standard), 0f)
+        assertEquals(0f, tempoPercent(sliderValueForPercent(-1.049f, PitchRange.Standard), PitchRange.Standard), 0f)
+
+        // Just outside the detent, the value survives untouched.
+        val justOutside = tempoPercent(sliderValueForPercent(1.06f, PitchRange.Standard), PitchRange.Standard)
+        assertTrue("expected just outside the detent, got $justOutside", justOutside != 0f)
+    }
 }
 
 class BpmReadoutTest {
