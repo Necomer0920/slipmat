@@ -39,6 +39,7 @@ import com.example.slipmat.nowplaying.EqControls
 import com.example.slipmat.nowplaying.FilterControls
 import com.example.slipmat.nowplaying.NowPlayingViewModel
 import com.example.slipmat.ui.theme.CornerExtraSmall
+import com.example.slipmat.ui.theme.blueprintGrid
 
 /**
  * Everything the Performance screen can do, gathered so the body stays stateless (§5.13) - the
@@ -115,7 +116,7 @@ internal fun PerformanceContent(
     actions: PerformanceActions,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().blueprintGrid()) {
         PerformanceHeader(trackTitle = trackTitle, artworkUri = artworkUri, onBack = actions.onBack)
         Column(
             modifier = Modifier
