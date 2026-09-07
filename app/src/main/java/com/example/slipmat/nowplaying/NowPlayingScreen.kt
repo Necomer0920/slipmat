@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
@@ -33,10 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import com.example.slipmat.ui.theme.CornerLarge
+import com.example.slipmat.ui.theme.CornerPerformanceDoor
 import com.example.slipmat.ui.theme.accentShadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,7 +60,6 @@ import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SleepTimerState
-import com.example.slipmat.library.formatDuration
 
 /**
  * Everything the now-playing screen can do, gathered so the body stays stateless.
@@ -149,10 +149,12 @@ internal fun NowPlayingContent(
         NowPlayingHeader(actions = actions)
 
         // Scrollable, because the content is taller than a short screen once the sleep-timer
-        // presets are expanded — and on a tall one it should still sit centred.
+        // presets are expanded — and on a tall one it should still sit centred. The door sits
+        // outside this weighted, scrolling region rather than as its last item, so it stays
+        // bottom-anchored (§4.2) regardless of how much the content above it scrolls.
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
@@ -192,15 +194,19 @@ internal fun NowPlayingContent(
                 onKeyLockChange = actions.onKeyLockChange,
             )
             TransportRow(state = state, actions = actions)
-            TextButton(onClick = actions.onOpenPerformance) {
-                Text("Filter · Delay · EQ ›")
-            }
             SleepTimerControls(
                 state = sleepTimer,
                 onStart = actions.onStartSleepTimer,
                 onCancel = actions.onCancelSleepTimer,
             )
         }
+
+        PerformanceDoor(
+            onClick = actions.onOpenPerformance,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+        )
     }
 }
 
@@ -245,6 +251,36 @@ private fun NowPlayingHeader(actions: NowPlayingActions, modifier: Modifier = Mo
     }
 }
 
+/**
+ * The pill that opens Performance (§4.2/§4.3) - bottom-anchored below the scrolling content rather
+ * than as its last item, so it stays put and visible on a short screen instead of scrolling away
+ * or landing wherever the content above it happens to end.
+ */
+@Composable
+private fun PerformanceDoor(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(CornerPerformanceDoor),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(text = "Filter · Delay · EQ", style = MaterialTheme.typography.labelLarge)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
 private val ARTWORK_SIZE = 168.dp
 
 @Composable
@@ -269,43 +305,6 @@ private fun ArtworkPlaceholder() {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {}
-}
-
-/**
- * Dragging must not fight the player.
- *
- * While the finger is down the slider shows the dragged value and ignores incoming position
- * updates; otherwise every 500 ms tick would yank the thumb back under the user.
- */
-@Composable
-private fun SeekBar(state: PlayerState, onSeek: (Long) -> Unit, modifier: Modifier = Modifier) {
-    var scrubPosition by remember { mutableStateOf<Float?>(null) }
-    val fraction = scrubPosition ?: state.progress
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Slider(
-            value = fraction,
-            onValueChange = { scrubPosition = it },
-            onValueChangeFinished = {
-                scrubPosition?.let { onSeek((it * state.durationMs).toLong()) }
-                scrubPosition = null
-            },
-            enabled = state.durationMs > 0,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = formatDuration((fraction * state.durationMs).toLong()),
-                style = MaterialTheme.typography.labelMedium,
-            )
-            Text(
-                text = formatDuration(state.durationMs),
-                style = MaterialTheme.typography.labelMedium,
-            )
-        }
-    }
 }
 
 private val PLAY_BUTTON_SIZE = 66.dp
