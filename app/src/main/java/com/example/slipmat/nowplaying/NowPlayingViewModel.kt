@@ -132,7 +132,10 @@ class NowPlayingViewModel @Inject constructor(
 
     fun onEqEnabledChange(enabled: Boolean) = playback.setEqEnabled(enabled)
 
-    fun onEqGainChange(band: Int, gainDb: Float) = playback.setEqGain(band, gainDb)
+    fun onEqGainChange(band: Int, gainDb: Float) {
+        enableEqIfNeeded()
+        playback.setEqGain(band, gainDb)
+    }
 
     fun onSaveEqPreset(name: String) {
         // Whatever the curve reads right now, which is what the user just spent time on.
@@ -158,15 +161,27 @@ class NowPlayingViewModel @Inject constructor(
      * cutoff is throttled because every change redesigns the filter; there is nothing to
      * redesign here, so throttling would only add lag to a control meant to be swept.
      */
-    fun onDelayTimeChange(ms: Float) = playback.setDelayTime(ms)
+    fun onDelayTimeChange(ms: Float) {
+        enableDelayIfNeeded()
+        playback.setDelayTime(ms)
+    }
 
-    fun onDelayFeedbackChange(value: Float) = playback.setDelayFeedback(value)
+    fun onDelayFeedbackChange(value: Float) {
+        enableDelayIfNeeded()
+        playback.setDelayFeedback(value)
+    }
 
-    fun onDelayMixChange(value: Float) = playback.setDelayMix(value)
+    fun onDelayMixChange(value: Float) {
+        enableDelayIfNeeded()
+        playback.setDelayMix(value)
+    }
 
     fun onFilterEnabledChange(enabled: Boolean) = playback.setFilterEnabled(enabled)
 
-    fun onFilterModeChange(mode: FilterMode) = playback.setFilterMode(mode)
+    fun onFilterModeChange(mode: FilterMode) {
+        enableFilterIfNeeded()
+        playback.setFilterMode(mode)
+    }
 
     /**
      * Rate-limited for the same reason the tempo slider is: a drag emits a value per frame, and
@@ -174,11 +189,25 @@ class NowPlayingViewModel @Inject constructor(
      * more than a few updates per buffer is wasted work at best.
      */
     fun onFilterCutoffChange(hz: Float) {
+        enableFilterIfNeeded()
         val now = System.currentTimeMillis()
         if (now - lastCutoffAtMs >= APPLY_INTERVAL_MS) {
             lastCutoffAtMs = now
             playback.setFilterCutoff(hz)
         }
+    }
+
+    /** §5.1: touching any control in an off panel is what turns that effect on. */
+    private fun enableFilterIfNeeded() {
+        if (!filter.value.enabled) playback.setFilterEnabled(true)
+    }
+
+    private fun enableDelayIfNeeded() {
+        if (!delay.value.enabled) playback.setDelayEnabled(true)
+    }
+
+    private fun enableEqIfNeeded() {
+        if (!eq.value.enabled) playback.setEqEnabled(true)
     }
 
     /**

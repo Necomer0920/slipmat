@@ -163,6 +163,44 @@ class NowPlayingViewModelTest {
     }
 
     @Test
+    fun `touching the filter cutoff enables the filter, off by default`() {
+        assertEquals(false, viewModel.filter.value.enabled)
+
+        viewModel.onFilterCutoffChange(1000f)
+
+        assertEquals(true, viewModel.filter.value.enabled)
+    }
+
+    @Test
+    fun `touching a delay control enables delay, off by default`() {
+        assertEquals(false, viewModel.delay.value.enabled)
+
+        viewModel.onDelayTimeChange(200f)
+
+        assertEquals(true, viewModel.delay.value.enabled)
+    }
+
+    @Test
+    fun `touching an EQ band enables EQ, off by default`() {
+        assertEquals(false, viewModel.eq.value.enabled)
+
+        viewModel.onEqGainChange(0, 3f)
+
+        assertEquals(true, viewModel.eq.value.enabled)
+    }
+
+    @Test
+    fun `an already-enabled effect is not re-enabled on every touch`() {
+        viewModel.onFilterCutoffChange(1000f)
+        playback.calls.clear()
+
+        viewModel.onFilterCutoffChange(2000f)
+
+        // Only the cutoff call - no redundant filterEnabled(true) once it is already on.
+        assertTrue(playback.calls.none { it.startsWith("filterEnabled") })
+    }
+
+    @Test
     fun `transport commands are forwarded untouched`() {
         viewModel.next()
         viewModel.previous()
