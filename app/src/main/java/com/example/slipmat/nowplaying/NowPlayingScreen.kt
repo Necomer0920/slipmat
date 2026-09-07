@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,11 +52,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
-import com.example.slipmat.core.media.dsp.DelayState
-import com.example.slipmat.core.data.eq.EqPreset
-import com.example.slipmat.core.media.dsp.EqState
-import com.example.slipmat.core.media.dsp.FilterMode
-import com.example.slipmat.core.media.dsp.FilterState
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SleepTimerState
 import com.example.slipmat.library.formatDuration
@@ -69,6 +65,7 @@ import com.example.slipmat.library.formatDuration
 data class NowPlayingActions(
     val onBack: () -> Unit = {},
     val onOpenQueue: () -> Unit = {},
+    val onOpenPerformance: () -> Unit = {},
     val onPlayPause: () -> Unit = {},
     val onNext: () -> Unit = {},
     val onPrevious: () -> Unit = {},
@@ -84,24 +81,13 @@ data class NowPlayingActions(
     val onSliderChangeFinished: () -> Unit = {},
     val onKeyLockChange: (Boolean) -> Unit = {},
     val onRangeChange: (PitchRange) -> Unit = {},
-    val onFilterEnabledChange: (Boolean) -> Unit = {},
-    val onFilterCutoffChange: (Float) -> Unit = {},
-    val onFilterModeChange: (FilterMode) -> Unit = {},
-    val onDelayEnabledChange: (Boolean) -> Unit = {},
-    val onDelayTimeChange: (Float) -> Unit = {},
-    val onDelayFeedbackChange: (Float) -> Unit = {},
-    val onDelayMixChange: (Float) -> Unit = {},
-    val onEqEnabledChange: (Boolean) -> Unit = {},
-    val onEqGainChange: (Int, Float) -> Unit = { _, _ -> },
-    val onSaveEqPreset: (String) -> Unit = {},
-    val onLoadEqPreset: (String) -> Unit = {},
-    val onDeleteEqPreset: (String) -> Unit = {},
 )
 
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
     onOpenQueue: () -> Unit,
+    onOpenPerformance: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = hiltViewModel(),
 ) {
@@ -109,10 +95,6 @@ fun NowPlayingScreen(
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
     val sliderValue by viewModel.sliderValue.collectAsStateWithLifecycle()
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
-    val filter by viewModel.filter.collectAsStateWithLifecycle()
-    val delay by viewModel.delay.collectAsStateWithLifecycle()
-    val eq by viewModel.eq.collectAsStateWithLifecycle()
-    val eqPresets by viewModel.eqPresets.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
 
@@ -121,15 +103,12 @@ fun NowPlayingScreen(
         sleepTimer = sleepTimer,
         sliderValue = sliderValue,
         waveform = waveform,
-        filter = filter,
-        delay = delay,
-        eq = eq,
-        eqPresets = eqPresets,
         keyLock = keyLock,
         pitchRange = pitchRange,
         actions = NowPlayingActions(
             onBack = onBack,
             onOpenQueue = onOpenQueue,
+            onOpenPerformance = onOpenPerformance,
             onPlayPause = viewModel::togglePlayPause,
             onNext = viewModel::next,
             onPrevious = viewModel::previous,
@@ -145,18 +124,6 @@ fun NowPlayingScreen(
             onSliderChangeFinished = viewModel::onSliderChangeFinished,
             onKeyLockChange = viewModel::onKeyLockChange,
             onRangeChange = viewModel::onRangeChange,
-            onFilterEnabledChange = viewModel::onFilterEnabledChange,
-            onFilterCutoffChange = viewModel::onFilterCutoffChange,
-            onFilterModeChange = viewModel::onFilterModeChange,
-            onDelayEnabledChange = viewModel::onDelayEnabledChange,
-            onDelayTimeChange = viewModel::onDelayTimeChange,
-            onDelayFeedbackChange = viewModel::onDelayFeedbackChange,
-            onDelayMixChange = viewModel::onDelayMixChange,
-            onEqEnabledChange = viewModel::onEqEnabledChange,
-            onEqGainChange = viewModel::onEqGainChange,
-            onSaveEqPreset = viewModel::onSaveEqPreset,
-            onLoadEqPreset = viewModel::onLoadEqPreset,
-            onDeleteEqPreset = viewModel::onDeleteEqPreset,
         ),
         modifier = modifier,
     )
@@ -171,10 +138,6 @@ internal fun NowPlayingContent(
     modifier: Modifier = Modifier,
     sliderValue: Float = 0f,
     waveform: FloatArray? = null,
-    filter: FilterState = FilterState(),
-    delay: DelayState = DelayState(),
-    eq: EqState = EqState(),
-    eqPresets: List<EqPreset> = emptyList(),
     keyLock: Boolean = true,
     pitchRange: PitchRange = PitchRange.Narrow,
     sourceBpm: Float? = null,
@@ -240,28 +203,9 @@ internal fun NowPlayingContent(
             )
             TransportControls(state = state, actions = actions)
             ModeControls(state = state, actions = actions)
-            FilterControls(
-                state = filter,
-                onEnabledChange = actions.onFilterEnabledChange,
-                onCutoffChange = actions.onFilterCutoffChange,
-                onModeChange = actions.onFilterModeChange,
-            )
-            DelayControls(
-                state = delay,
-                onEnabledChange = actions.onDelayEnabledChange,
-                onTimeChange = actions.onDelayTimeChange,
-                onFeedbackChange = actions.onDelayFeedbackChange,
-                onMixChange = actions.onDelayMixChange,
-            )
-            EqControls(
-                state = eq,
-                presets = eqPresets,
-                onEnabledChange = actions.onEqEnabledChange,
-                onGainChange = actions.onEqGainChange,
-                onSavePreset = actions.onSaveEqPreset,
-                onLoadPreset = actions.onLoadEqPreset,
-                onDeletePreset = actions.onDeleteEqPreset,
-            )
+            TextButton(onClick = actions.onOpenPerformance) {
+                Text("Filter · Delay · EQ ›")
+            }
             SleepTimerControls(
                 state = sleepTimer,
                 onStart = actions.onStartSleepTimer,
