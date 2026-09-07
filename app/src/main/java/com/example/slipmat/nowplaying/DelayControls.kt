@@ -1,104 +1,88 @@
 package com.example.slipmat.nowplaying
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.core.media.dsp.DelayState
-import com.example.slipmat.core.media.dsp.sliderToDelayMs
-import com.example.slipmat.core.media.dsp.sliderToFeedback
+import com.example.slipmat.core.media.dsp.MAX_DELAY_MS
+import com.example.slipmat.core.media.dsp.MAX_FEEDBACK
+import com.example.slipmat.core.media.dsp.MIN_DELAY_MS
+import com.example.slipmat.ui.components.RotaryKnob
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * The delay: on/off, then time, feedback and mix.
- *
- * Three sliders rather than a list of presets, because the point of the effect here is moving them
- * while a track plays.
+ * The delay (§4.3): three rotary knobs, Time/Feedback/Mix, each bound to the engine's own range.
+ * No enable switch - as with the filter panel, §5.1 makes the tab's own state dot the only on/off
+ * control, so turning any knob is itself what turns delay on (R3.6).
  */
 @Composable
 fun DelayControls(
     state: DelayState,
-    onEnabledChange: (Boolean) -> Unit,
     onTimeChange: (Float) -> Unit,
     onFeedbackChange: (Float) -> Unit,
     onMixChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(text = "Delay", style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = state.enabled, onCheckedChange = onEnabledChange)
-        }
-
-        // Hidden when off, so the screen does not carry three dead controls.
-        AnimatedVisibility(visible = state.enabled) {
-            Column {
-                LabelledSlider(
-                    label = "Time",
-                    value = formatMillis(state.timeMs),
-                    position = state.timeSlider,
-                    onPositionChange = { onTimeChange(sliderToDelayMs(it)) },
-                )
-                LabelledSlider(
-                    label = "Feedback",
-                    value = formatPercent(state.feedbackSlider),
-                    position = state.feedbackSlider,
-                    onPositionChange = { onFeedbackChange(sliderToFeedback(it)) },
-                )
-                LabelledSlider(
-                    label = "Mix",
-                    value = formatPercent(state.mix),
-                    position = state.mix,
-                    onPositionChange = onMixChange,
-                )
-            }
-        }
+        LabelledKnob(
+            label = "Time",
+            value = formatMillis(state.timeMs),
+            knobValue = state.timeMs,
+            min = MIN_DELAY_MS,
+            max = MAX_DELAY_MS,
+            onValueChange = onTimeChange,
+        )
+        LabelledKnob(
+            label = "Feedback",
+            value = formatPercent(state.feedbackSlider),
+            knobValue = state.feedback,
+            min = 0f,
+            max = MAX_FEEDBACK,
+            onValueChange = onFeedbackChange,
+        )
+        LabelledKnob(
+            label = "Mix",
+            value = formatPercent(state.mix),
+            knobValue = state.mix,
+            min = 0f,
+            max = 1f,
+            onValueChange = onMixChange,
+        )
     }
 }
 
 @Composable
-private fun LabelledSlider(
+private fun LabelledKnob(
     label: String,
     value: String,
-    position: Float,
-    onPositionChange: (Float) -> Unit,
+    knobValue: Float,
+    min: Float,
+    max: Float,
+    onValueChange: (Float) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        RotaryKnob(value = knobValue, min = min, max = max, onValueChange = onValueChange)
+        Text(text = label, style = MaterialTheme.typography.labelMedium)
         Text(
             text = value,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    Slider(
-        value = position,
-        onValueChange = onPositionChange,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 /** Milliseconds below a second, seconds above — how a delay time is normally spoken. */

@@ -131,7 +131,6 @@ internal fun PerformanceContent(
                 )
                 PerformanceTab.Delay -> DelayControls(
                     state = delay,
-                    onEnabledChange = actions.onDelayEnabledChange,
                     onTimeChange = actions.onDelayTimeChange,
                     onFeedbackChange = actions.onDelayFeedbackChange,
                     onMixChange = actions.onDelayMixChange,
