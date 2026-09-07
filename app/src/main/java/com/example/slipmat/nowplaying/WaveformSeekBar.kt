@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,14 +21,18 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.library.formatDuration
+import com.example.slipmat.ui.theme.CornerExtraSmall
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -39,6 +47,9 @@ private val FLAT_LINE_THICKNESS = 3.dp
 
 /** How much of the track the magnifier shows, as a fraction of the whole. */
 private const val MAGNIFIER_WINDOW = 0.06f
+
+/** Vertical clearance between the tooltip and the bar it floats above. */
+private val TOOLTIP_GAP = 8.dp
 
 /**
  * The waveform, drawn from peaks and scrubbed by dragging.
@@ -119,6 +130,15 @@ fun WaveformSeekBar(
                     )
                 }
             }
+
+            scrubFraction?.let { fraction ->
+                ScrubTooltip(
+                    timeMs = (fraction * durationMs).toLong(),
+                    touchX = fraction * widthPx,
+                    trackWidth = widthPx,
+                    modifier = Modifier.align(Alignment.TopStart).offset(y = -TOOLTIP_GAP),
+                )
+            }
         }
 
         Row(
@@ -134,6 +154,35 @@ fun WaveformSeekBar(
                 style = MaterialTheme.typography.labelMedium,
             )
         }
+    }
+}
+
+/**
+ * `m:ss` floating above the touch point while scrubbing, clamped so it never overflows the track
+ * at either end (§4.2).
+ */
+@Composable
+private fun ScrubTooltip(
+    timeMs: Long,
+    touchX: Float,
+    trackWidth: Float,
+    modifier: Modifier = Modifier,
+) {
+    var tooltipWidthPx by remember { mutableFloatStateOf(0f) }
+    val offsetX = clampTooltipX(touchX, tooltipWidthPx, trackWidth)
+
+    Surface(
+        modifier = modifier
+            .onSizeChanged { tooltipWidthPx = it.width.toFloat() }
+            .offset { IntOffset(offsetX.roundToInt(), 0) },
+        shape = RoundedCornerShape(CornerExtraSmall),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    ) {
+        Text(
+            text = formatDuration(timeMs),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }
 
@@ -211,6 +260,15 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFlatLine(
             cap = StrokeCap.Round,
         )
     }
+}
+
+/**
+ * The scrub tooltip's left edge: centred on [touchX], clamped so it never overflows the track it
+ * floats above at either end (§4.2 - "clamped inside the bar's bounds at both ends").
+ */
+internal fun clampTooltipX(touchX: Float, tooltipWidth: Float, trackWidth: Float): Float {
+    val centred = touchX - tooltipWidth / 2f
+    return centred.coerceIn(0f, (trackWidth - tooltipWidth).coerceAtLeast(0f))
 }
 
 /**

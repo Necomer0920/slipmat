@@ -60,3 +60,38 @@ class BucketPeaksTest {
         assertEquals(0, bucketPeaks(FloatArray(0), 64).size)
     }
 }
+
+class ClampTooltipXTest {
+
+    @Test
+    fun `at the very start the tooltip's left edge sits at the track's own start`() {
+        val left = clampTooltipX(touchX = 0f, tooltipWidth = 48f, trackWidth = 360f)
+
+        assertEquals(0f, left, 0.001f)
+    }
+
+    @Test
+    fun `at the very end the tooltip's right edge sits at the track's own end, not past it`() {
+        val trackWidth = 360f
+        val tooltipWidth = 48f
+
+        val left = clampTooltipX(touchX = trackWidth, tooltipWidth = tooltipWidth, trackWidth = trackWidth)
+
+        assertTrue(left >= 0f)
+        assertEquals(trackWidth, left + tooltipWidth, 0.001f) // right edge exactly at the track's end
+    }
+
+    @Test
+    fun `mid-track the tooltip centres on the touch point`() {
+        val left = clampTooltipX(touchX = 180f, tooltipWidth = 48f, trackWidth = 360f)
+
+        assertEquals(180f - 24f, left, 0.001f)
+    }
+
+    @Test
+    fun `a tooltip wider than the track never goes negative`() {
+        val left = clampTooltipX(touchX = 0f, tooltipWidth = 400f, trackWidth = 360f)
+
+        assertTrue(left >= 0f)
+    }
+}
