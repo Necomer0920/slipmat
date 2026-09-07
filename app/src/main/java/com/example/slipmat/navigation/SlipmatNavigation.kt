@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -91,6 +93,11 @@ fun SlipmatNavHost(
         // Only above the four browse tabs themselves — a detail screen carries its own title and
         // back arrow (DetailScaffold), so stacking this on top of that would double up chrome.
         if (onBrowseTab) {
+            Text(
+                text = "Library",
+                style = MaterialTheme.typography.displayLarge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             LibraryTabRow(
                 selected = BrowseTab.entries.first { it.route == currentRoute },
                 onSelect = { tab ->
