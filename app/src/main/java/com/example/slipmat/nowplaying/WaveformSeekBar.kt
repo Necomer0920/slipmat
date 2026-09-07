@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.library.formatDuration
@@ -28,6 +28,9 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 private val WAVEFORM_HEIGHT = 72.dp
+
+/** Thickness of the line shown before the waveform exists. A Material slider track is 4.dp. */
+private val FLAT_LINE_THICKNESS = 3.dp
 
 /** How much of the track the magnifier shows, as a fraction of the whole. */
 private const val MAGNIFIER_WINDOW = 0.06f
@@ -56,47 +59,49 @@ fun WaveformSeekBar(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Box {
-            if (peaks == null) {
-                // Decoding takes seconds on a long track; a bar that says so beats a blank gap
-                // that looks like a bug.
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(WAVEFORM_HEIGHT),
-                )
-            } else {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(WAVEFORM_HEIGHT)
-                        .pointerInput(peaks) {
-                            widthPx = size.width.toFloat()
-                            detectTapGestures { offset ->
-                                onSeek((offset.x / size.width).coerceIn(0f, 1f))
-                            }
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WAVEFORM_HEIGHT)
+                    .pointerInput(peaks) {
+                        widthPx = size.width.toFloat()
+                        detectTapGestures { offset ->
+                            onSeek((offset.x / size.width).coerceIn(0f, 1f))
                         }
-                        .pointerInput(peaks) {
-                            widthPx = size.width.toFloat()
-                            detectHorizontalDragGestures(
-                                onDragStart = { offset ->
-                                    scrubFraction = (offset.x / size.width).coerceIn(0f, 1f)
-                                },
-                                onHorizontalDrag = { change, _ ->
-                                    change.consume()
-                                    scrubFraction =
-                                        (change.position.x / size.width).coerceIn(0f, 1f)
-                                },
-                                onDragEnd = {
-                                    scrubFraction?.let(onSeek)
-                                    scrubFraction = null
-                                },
-                                onDragCancel = { scrubFraction = null },
-                            )
-                        },
-                ) {
+                    }
+                    .pointerInput(peaks) {
+                        widthPx = size.width.toFloat()
+                        detectHorizontalDragGestures(
+                            onDragStart = { offset ->
+                                scrubFraction = (offset.x / size.width).coerceIn(0f, 1f)
+                            },
+                            onHorizontalDrag = { change, _ ->
+                                change.consume()
+                                scrubFraction =
+                                    (change.position.x / size.width).coerceIn(0f, 1f)
+                            },
+                            onDragEnd = {
+                                scrubFraction?.let(onSeek)
+                                scrubFraction = null
+                            },
+                            onDragCancel = { scrubFraction = null },
+                        )
+                    },
+            ) {
+                // Peaks are null while the decode runs, and stay null for a file that cannot be
+                // decoded at all. A flat line covers both: it is what the bar is already becoming,
+                // so the waveform grows out of it rather than replacing something.
+                if (peaks == null) {
+                    drawFlatLine(shown, played, unplayed)
+                } else {
                     drawWaveform(peaks, shown, played, unplayed)
                 }
+            }
 
-                // Only while dragging: a magnified slice around the finger, so a scrub can be
-                // placed on a beat rather than approximately.
+            // Only while dragging, and only once there is a waveform to magnify.
+            // A magnified slice around the finger lets a scrub be placed on a beat rather than
+            // approximately.
+            if (peaks != null) {
                 scrubFraction?.let { fraction ->
                     WaveformMagnifier(
                         peaks = peaks,
@@ -161,6 +166,41 @@ private fun WaveformMagnifier(
                 size = androidx.compose.ui.geometry.Size(barWidth * 0.7f, barHeight),
             )
         }
+    }
+}
+
+/**
+ * The bar before there is a waveform: a plain played/unplayed line through the middle.
+ *
+ * Deliberately the same shape the waveform settles into, so the decode finishing reads as the line
+ * gaining detail rather than as one control being swapped for another. It seeks while it is drawn,
+ * which is the point of using a line rather than a progress bar — decoding a long track takes
+ * seconds, and a bar you cannot scrub for those seconds is worse than no waveform at all.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFlatLine(
+    progress: Float,
+    played: Color,
+    unplayed: Color,
+) {
+    val centreY = size.height / 2f
+    val thickness = FLAT_LINE_THICKNESS.toPx()
+    val playedTo = (progress.coerceIn(0f, 1f) * size.width)
+
+    drawLine(
+        color = unplayed,
+        start = Offset(0f, centreY),
+        end = Offset(size.width, centreY),
+        strokeWidth = thickness,
+        cap = StrokeCap.Round,
+    )
+    if (playedTo > 0f) {
+        drawLine(
+            color = played,
+            start = Offset(0f, centreY),
+            end = Offset(playedTo, centreY),
+            strokeWidth = thickness,
+            cap = StrokeCap.Round,
+        )
     }
 }
 
