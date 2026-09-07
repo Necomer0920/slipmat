@@ -75,6 +75,7 @@ fun SlipmatTheme(
     MaterialTheme(
         colorScheme = target.animatedAccents(),
         typography = Typography,
+        shapes = SlipmatShapes,
         content = content
     )
 }
