@@ -1,6 +1,5 @@
 package com.example.slipmat.nowplaying
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -20,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -31,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +51,7 @@ import com.example.slipmat.core.media.dsp.EQ_BANDS
 import com.example.slipmat.core.media.dsp.EQ_MAX_GAIN_DB
 import com.example.slipmat.core.media.dsp.EqState
 import com.example.slipmat.core.media.dsp.curveFractionFor
+import com.example.slipmat.ui.components.Chip
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -61,10 +61,10 @@ private val EQ_HANDLE_RING_WIDTH = 2.dp
 
 /**
  * The multiband EQ (§4.3): a 160dp curve area, a dashed zero line, a smooth cubic through the eight
- * handles, and frequency labels from [EQ_BANDS] beneath. No enable switch on the curve itself - as
- * with the filter and delay panels, §5.1 makes the tab's own state dot the only on/off control, so
- * dragging a handle is itself what turns EQ on (R3.6). The preset row below keeps its own gate for
- * now; R3.13 replaces it with the spec's preset chips.
+ * handles, frequency labels from [EQ_BANDS] beneath, and the preset chip row (R3.13). No enable
+ * switch on the curve itself - as with the filter and delay panels, §5.1 makes the tab's own state
+ * dot the only on/off control, so dragging a handle (or loading a preset) is itself what turns EQ
+ * on (R3.6).
  */
 @Composable
 fun EqControls(
@@ -76,6 +76,14 @@ fun EqControls(
     onLoadPreset: (String) -> Unit = {},
     onDeletePreset: (String) -> Unit = {},
 ) {
+    // Which preset the curve currently matches, purely for the chip row's own highlight - not
+    // playback state, so it lives here rather than in the view model (R3.13).
+    var selectedPresetName by rememberSaveable { mutableStateOf<String?>(null) }
+    val onBandDragged: (Int, Float) -> Unit = { band, gainDb ->
+        selectedPresetName = null // Custom, the moment any point moves (§4.3).
+        onGainChange(band, gainDb)
+    }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -98,11 +106,11 @@ fun EqControls(
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
                             val band = nearestBand(down.position.x, size.width.toFloat())
-                            onGainChange(band, snappedDbForY(down.position.y, size.height.toFloat()))
+                            onBandDragged(band, snappedDbForY(down.position.y, size.height.toFloat()))
 
                             drag(down.id) { change ->
                                 change.consume()
-                                onGainChange(
+                                onBandDragged(
                                     band,
                                     snappedDbForY(change.position.y, size.height.toFloat()),
                                 )
@@ -124,19 +132,21 @@ fun EqControls(
             // Semantics only - no gesture handling of its own, so the Canvas above keeps doing
             // the actual dragging (verified on device in R3.11). This is what makes each handle
             // announce and adjust via TalkBack's "Adjust" gesture without a physical drag (§5.11).
-            EqHandleSemantics(gainsDb = state.gainsDb, onGainChange = onGainChange)
+            EqHandleSemantics(gainsDb = state.gainsDb, onGainChange = onBandDragged)
         }
 
         EqBandLabels(color = labelColor)
 
-        AnimatedVisibility(visible = state.enabled) {
-            PresetRow(
-                presets = presets,
-                onSave = onSavePreset,
-                onLoad = onLoadPreset,
-                onDelete = onDeletePreset,
-            )
-        }
+        EqPresetChips(
+            selectedPresetName = selectedPresetName,
+            presets = presets,
+            onLoad = { name ->
+                selectedPresetName = name
+                onLoadPreset(name)
+            },
+            onSave = onSavePreset,
+            onDelete = onDeletePreset,
+        )
     }
 }
 
@@ -230,59 +240,85 @@ internal fun formatEqBandLabel(hz: Float): String {
     }
 }
 
+/**
+ * The preset row (§4.3/R3.13): Flat, Bass Boost, Vocal, then Custom, then saved presets, then a
+ * chip that opens the name field to save the curve as it stands - R0.8's own listed order for this
+ * exact row. `selectedPresetName == null` is what makes Custom the highlighted one; it carries no
+ * `onClick` of its own; there is nothing to switch it to.
+ */
 @Composable
-private fun PresetRow(
+private fun EqPresetChips(
+    selectedPresetName: String?,
     presets: List<EqPreset>,
-    onSave: (String) -> Unit,
     onLoad: (String) -> Unit,
+    onSave: (String) -> Unit,
     onDelete: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    var showSaveField by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Preset name") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { save(name, onSave) { name = "" } }),
-            )
-            TextButton(
-                onClick = { save(name, onSave) { name = "" } },
-                // A blank name saves a preset that cannot be loaded or deleted from a list of names.
-                enabled = name.isNotBlank(),
-            ) {
-                Text("Save")
-            }
-        }
-
-        // Scrolls sideways rather than wrapping: the list grows without pushing the curve around.
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            for (builtIn in BUILT_IN_EQ_PRESETS) {
+                Chip(
+                    selected = selectedPresetName == builtIn.name,
+                    onClick = { onLoad(builtIn.name) },
+                    label = builtIn.name,
+                    alwaysFilled = true,
+                )
+            }
+            Chip(selected = selectedPresetName == null, onClick = {}, label = "Custom", alwaysFilled = true)
             for (preset in presets) {
-                InputChip(
-                    selected = false,
+                Chip(
+                    selected = selectedPresetName == preset.name,
                     onClick = { onLoad(preset.name) },
-                    label = { Text(preset.name) },
-                    trailingIcon = {
+                    label = preset.name,
+                    alwaysFilled = true,
+                    trailing = {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Delete ${preset.name}",
-                            modifier = Modifier.clickable { onDelete(preset.name) },
+                            modifier = Modifier.size(14.dp).clickable { onDelete(preset.name) },
                         )
                     },
                 )
+            }
+            Chip(
+                selected = showSaveField,
+                onClick = { showSaveField = !showSaveField },
+                label = "+ Save current",
+                alwaysFilled = true,
+            )
+        }
+
+        if (showSaveField) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Preset name") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { save(name, onSave) { name = ""; showSaveField = false } }),
+                )
+                TextButton(
+                    onClick = { save(name, onSave) { name = ""; showSaveField = false } },
+                    // A blank name saves a preset that cannot be loaded or deleted from a list of names.
+                    enabled = name.isNotBlank(),
+                ) {
+                    Text("Save")
+                }
             }
         }
     }

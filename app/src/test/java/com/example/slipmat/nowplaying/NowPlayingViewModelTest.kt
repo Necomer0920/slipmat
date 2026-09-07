@@ -47,10 +47,39 @@ class NowPlayingViewModelTest {
 
         viewModel.onLoadEqPreset("Club")
 
-        // One call, not eight: band-at-a-time would animate the curve through seven settings
+        // Two calls: EQ was off, so loading a preset enables it too (R3.13/§5.1) - then one gains
+        // call, not eight, since band-at-a-time would animate the curve through seven settings
         // nobody asked for on the way to the one they did.
-        assertEquals(1, playback.calls.size)
-        assertTrue(playback.calls.single(), playback.calls.single().startsWith("eqGains("))
+        assertEquals(listOf("eqEnabled(true)"), playback.calls.filter { it.startsWith("eqEnabled") })
+        assertEquals(1, playback.calls.count { it.startsWith("eqGains(") })
+    }
+
+    @Test
+    fun `loading a preset while EQ is already on does not re-enable it`() {
+        viewModel.onEqEnabledChange(true)
+        presets.put("Club", List(EQ_BANDS.size) { 3f })
+        playback.calls.clear()
+
+        viewModel.onLoadEqPreset("Club")
+
+        assertEquals(emptyList<String>(), playback.calls.filter { it.startsWith("eqEnabled") })
+    }
+
+    @Test
+    fun `loading a built-in preset applies its gains in one call and enables EQ`() {
+        viewModel.onLoadEqPreset("Bass Boost")
+
+        assertEquals(listOf("eqEnabled(true)"), playback.calls.filter { it.startsWith("eqEnabled") })
+        assertEquals(1, playback.calls.count { it.startsWith("eqGains(") })
+    }
+
+    @Test
+    fun `deleting a saved preset round-trips through the store`() {
+        presets.put("Club", List(EQ_BANDS.size) { 3f })
+
+        viewModel.onDeleteEqPreset("Club")
+
+        assertEquals(emptyList<Any>(), presets.saved)
     }
 
     @Test

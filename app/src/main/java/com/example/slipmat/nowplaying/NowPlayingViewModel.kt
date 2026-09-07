@@ -142,9 +142,26 @@ class NowPlayingViewModel @Inject constructor(
         viewModelScope.launch { presets.save(name, eq.value.gainsDb) }
     }
 
+    /**
+     * Built-ins first, since they are not rows [presets] holds - checked here, in the one place
+     * both a built-in name and a saved one arrive by the same call, rather than pushing the two
+     * kinds of preset apart in the UI layer that only ever wants "load whatever this name is."
+     *
+     * [enableEqIfNeeded] only fires once a preset is actually found - a stale chip for a preset
+     * someone just deleted should stay a no-op, not a side effect that turns EQ on for nothing.
+     */
     fun onLoadEqPreset(name: String) {
+        val builtIn = BUILT_IN_EQ_PRESETS.find { it.name == name }
+        if (builtIn != null) {
+            enableEqIfNeeded()
+            playback.setEqGains(builtIn.gainsDb)
+            return
+        }
         viewModelScope.launch {
-            presets.load(name)?.let { preset -> playback.setEqGains(preset.gainsDb) }
+            presets.load(name)?.let { preset ->
+                enableEqIfNeeded()
+                playback.setEqGains(preset.gainsDb)
+            }
         }
     }
 

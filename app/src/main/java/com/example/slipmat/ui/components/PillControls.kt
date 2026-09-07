@@ -80,7 +80,10 @@ internal fun chipContainerColor(
     else -> Color.Transparent
 }
 
-/** EQ preset chips (Flat / Bass Boost / Vocal / Custom / saved presets). */
+/**
+ * EQ preset chips (Flat / Bass Boost / Vocal / Custom / saved presets). `trailing` renders after
+ * the label - a saved preset's own delete glyph (R3.13); built-ins and Custom leave it `null`.
+ */
 @Composable
 fun Chip(
     selected: Boolean,
@@ -88,6 +91,7 @@ fun Chip(
     label: String,
     modifier: Modifier = Modifier,
     alwaysFilled: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Box(
@@ -101,7 +105,14 @@ fun Chip(
             color = chipContainerColor(selected, alwaysFilled, colorScheme.primary, colorScheme.surfaceContainerHigh),
             contentColor = pillContentColor(selected, colorScheme.onPrimary, colorScheme.onSurfaceVariant),
         ) {
-            Text(text = label, style = MaterialTheme.typography.labelLarge, modifier = PillPadding)
+            Row(
+                modifier = PillPadding,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(text = label, style = MaterialTheme.typography.labelLarge)
+                trailing?.invoke()
+            }
         }
     }
 }
