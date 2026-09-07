@@ -29,8 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.data.eq.EqPreset
 import com.example.slipmat.core.media.dsp.DelayState
@@ -75,48 +73,12 @@ internal enum class PerformanceTab(val label: String) {
 
 /**
  * Filter/Delay/EQ, moved off Now Playing (R2.1) so effects don't compete with playback controls
- * for the same screen. Talks to [NowPlayingViewModel] directly - the same instance Now Playing and
- * the queue sheet share (R3.1's own reason for reaching this screen through a shared-state pager
- * page rather than a fresh destination: a second instance would re-decode the waveform).
+ * for the same screen. [NowPlayingScreen] composes this directly as its second pager page, passing
+ * the one [NowPlayingViewModel] instance it and the queue sheet already share (R3.1's own reason
+ * for reaching this screen through a shared-state pager page rather than a fresh nav destination:
+ * a second instance would re-decode the waveform) - there is no separate wired `PerformanceScreen`
+ * to resolve its own view model, since nothing but that pager page reaches this screen.
  */
-@Composable
-fun PerformanceScreen(
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    viewModel: NowPlayingViewModel = hiltViewModel(),
-) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val filter by viewModel.filter.collectAsStateWithLifecycle()
-    val delay by viewModel.delay.collectAsStateWithLifecycle()
-    val eq by viewModel.eq.collectAsStateWithLifecycle()
-    val eqPresets by viewModel.eqPresets.collectAsStateWithLifecycle()
-
-    PerformanceContent(
-        trackTitle = state.title,
-        artworkUri = state.artworkUri,
-        filter = filter,
-        delay = delay,
-        eq = eq,
-        eqPresets = eqPresets,
-        actions = PerformanceActions(
-            onBack = onBack,
-            onFilterEnabledChange = viewModel::onFilterEnabledChange,
-            onFilterCutoffChange = viewModel::onFilterCutoffChange,
-            onFilterModeChange = viewModel::onFilterModeChange,
-            onDelayEnabledChange = viewModel::onDelayEnabledChange,
-            onDelayTimeChange = viewModel::onDelayTimeChange,
-            onDelayFeedbackChange = viewModel::onDelayFeedbackChange,
-            onDelayMixChange = viewModel::onDelayMixChange,
-            onEqEnabledChange = viewModel::onEqEnabledChange,
-            onEqGainChange = viewModel::onEqGainChange,
-            onSaveEqPreset = viewModel::onSaveEqPreset,
-            onLoadEqPreset = viewModel::onLoadEqPreset,
-            onDeleteEqPreset = viewModel::onDeleteEqPreset,
-        ),
-        modifier = modifier,
-    )
-}
-
 @Composable
 internal fun PerformanceContent(
     trackTitle: String?,
@@ -164,7 +126,6 @@ internal fun PerformanceContent(
             when (selectedTab) {
                 PerformanceTab.Filter -> FilterControls(
                     state = filter,
-                    onEnabledChange = actions.onFilterEnabledChange,
                     onCutoffChange = actions.onFilterCutoffChange,
                     onModeChange = actions.onFilterModeChange,
                 )
