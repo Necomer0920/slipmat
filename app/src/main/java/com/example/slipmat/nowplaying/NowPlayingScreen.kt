@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Replay10
@@ -23,7 +26,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,7 +35,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +67,7 @@ data class NowPlayingActions(
     val onBack: () -> Unit = {},
     val onOpenQueue: () -> Unit = {},
     val onOpenPerformance: () -> Unit = {},
+    val onOpenOverflow: () -> Unit = {},
     val onPlayPause: () -> Unit = {},
     val onNext: () -> Unit = {},
     val onPrevious: () -> Unit = {},
@@ -127,7 +129,6 @@ fun NowPlayingScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun NowPlayingContent(
     state: PlayerState,
@@ -141,19 +142,7 @@ internal fun NowPlayingContent(
     sourceBpm: Float? = null,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Now playing") },
-            navigationIcon = {
-                IconButton(onClick = actions.onBack) {
-                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close")
-                }
-            },
-            actions = {
-                IconButton(onClick = actions.onOpenQueue) {
-                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
-                }
-            },
-        )
+        NowPlayingHeader(actions = actions)
 
         // Scrollable, because the content is taller than a short screen once the sleep-timer
         // presets are expanded — and on a tall one it should still sit centred.
@@ -208,6 +197,47 @@ internal fun NowPlayingContent(
                 onStart = actions.onStartSleepTimer,
                 onCancel = actions.onCancelSleepTimer,
             )
+        }
+    }
+}
+
+/**
+ * §4.2's header: leading and trailing zones both a fixed 84dp width (the README's own number) so
+ * the centred eyebrow is optically centred regardless of how many icons sit in either zone.
+ */
+private val HeaderZoneWidth = 84.dp
+private val HeaderHeight = 48.dp
+
+@Composable
+private fun NowPlayingHeader(actions: NowPlayingActions, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth().height(HeaderHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.width(HeaderZoneWidth), contentAlignment = Alignment.CenterStart) {
+            IconButton(onClick = actions.onBack) {
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close")
+            }
+        }
+        Text(
+            text = "PLAYING FROM LIBRARY",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Row(
+            modifier = Modifier.width(HeaderZoneWidth),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            IconButton(onClick = actions.onOpenQueue) {
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
+            }
+            IconButton(onClick = actions.onOpenOverflow) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "More")
+            }
         }
     }
 }
