@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.library.formatDuration
 import com.example.slipmat.ui.theme.CornerExtraSmall
-import kotlin.math.max
 import kotlin.math.roundToInt
 
 /** §4.2: 64 bars, 52dp tall, 2px gaps, radius-2, bottom-aligned. */
@@ -45,11 +44,8 @@ private val BAR_CORNER_RADIUS = 2.dp
 /** Thickness of the line shown before the waveform exists. A Material slider track is 4.dp. */
 private val FLAT_LINE_THICKNESS = 3.dp
 
-/** How much of the track the magnifier shows, as a fraction of the whole. */
-private const val MAGNIFIER_WINDOW = 0.06f
-
 /** Vertical clearance between the tooltip and the bar it floats above. */
-private val TOOLTIP_GAP = 8.dp
+private val OVERLAY_GAP = 8.dp
 
 /**
  * The waveform, drawn from peaks and scrubbed by dragging.
@@ -116,27 +112,12 @@ fun WaveformSeekBar(
                 }
             }
 
-            // Only while dragging, and only once there is a waveform to magnify.
-            // A magnified slice around the finger lets a scrub be placed on a beat rather than
-            // approximately.
-            if (peaks != null) {
-                scrubFraction?.let { fraction ->
-                    WaveformMagnifier(
-                        peaks = peaks,
-                        centre = fraction,
-                        played = played,
-                        unplayed = unplayed,
-                        modifier = Modifier.fillMaxWidth().height(WAVEFORM_HEIGHT),
-                    )
-                }
-            }
-
             scrubFraction?.let { fraction ->
                 ScrubTooltip(
                     timeMs = (fraction * durationMs).toLong(),
                     touchX = fraction * widthPx,
                     trackWidth = widthPx,
-                    modifier = Modifier.align(Alignment.TopStart).offset(y = -TOOLTIP_GAP),
+                    modifier = Modifier.align(Alignment.TopStart),
                 )
             }
         }
@@ -174,6 +155,7 @@ private fun ScrubTooltip(
     Surface(
         modifier = modifier
             .onSizeChanged { tooltipWidthPx = it.width.toFloat() }
+            .offset(y = -OVERLAY_GAP)
             .offset { IntOffset(offsetX.roundToInt(), 0) },
         shape = RoundedCornerShape(CornerExtraSmall),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -183,45 +165,6 @@ private fun ScrubTooltip(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
-    }
-}
-
-/**
- * A zoomed slice of the waveform around the finger.
- *
- * Drawn over the top half so it does not sit under the thumb, which is the whole point — a
- * magnifier you cannot see because your hand is on it is decoration.
- */
-@Composable
-private fun WaveformMagnifier(
-    peaks: FloatArray,
-    centre: Float,
-    played: Color,
-    unplayed: Color,
-    modifier: Modifier = Modifier,
-) {
-    Canvas(modifier = modifier) {
-        val half = MAGNIFIER_WINDOW / 2f
-        val from = ((centre - half) * peaks.size).roundToInt().coerceIn(0, peaks.lastIndex)
-        val to = ((centre + half) * peaks.size).roundToInt().coerceIn(from + 1, peaks.size)
-        val slice = peaks.copyOfRange(from, to)
-
-        val panelHeight = size.height / 2f
-        drawRect(
-            color = unplayed.copy(alpha = 0.95f),
-            topLeft = Offset(0f, 0f),
-            size = androidx.compose.ui.geometry.Size(size.width, panelHeight),
-        )
-
-        val barWidth = size.width / max(slice.size, 1)
-        slice.forEachIndexed { index, peak ->
-            val barHeight = (peak * panelHeight).coerceAtLeast(1f)
-            drawRect(
-                color = played,
-                topLeft = Offset(index * barWidth, (panelHeight - barHeight) / 2f),
-                size = androidx.compose.ui.geometry.Size(barWidth * 0.7f, barHeight),
-            )
-        }
     }
 }
 
