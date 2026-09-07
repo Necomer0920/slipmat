@@ -1,5 +1,6 @@
 package com.example.slipmat.nowplaying
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
@@ -189,8 +191,7 @@ internal fun NowPlayingContent(
                 onSliderChangeFinished = actions.onSliderChangeFinished,
                 onKeyLockChange = actions.onKeyLockChange,
             )
-            TransportControls(state = state, actions = actions)
-            ModeControls(state = state, actions = actions)
+            TransportRow(state = state, actions = actions)
             TextButton(onClick = actions.onOpenPerformance) {
                 Text("Filter · Delay · EQ ›")
             }
@@ -307,17 +308,30 @@ private fun SeekBar(state: PlayerState, onSeek: (Long) -> Unit, modifier: Modifi
     }
 }
 
+private val PLAY_BUTTON_SIZE = 66.dp
+private val TRANSPORT_SIDE_PADDING = 22.dp
+
+/**
+ * All seven controls in one row per §4.2 - shuffle and repeat included, not set apart. They used
+ * to sit in their own row below; the redesign spreads all seven across one 22dp-padded row instead.
+ */
 @Composable
-private fun TransportControls(
+private fun TransportRow(
     state: PlayerState,
     actions: NowPlayingActions,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().padding(horizontal = TRANSPORT_SIDE_PADDING),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        ModeToggle(
+            active = state.shuffleEnabled,
+            icon = Icons.Filled.Shuffle,
+            description = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
+            onClick = actions.onToggleShuffle,
+        )
         TransportButton(
             icon = Icons.Filled.Replay10,
             description = "Back 10 seconds",
@@ -330,14 +344,22 @@ private fun TransportControls(
             onClick = actions.onPrevious,
             enabled = state.hasMedia,
         )
-        TransportButton(
-            icon = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            description = if (state.isPlaying) "Pause" else "Play",
+        IconButton(
             onClick = actions.onPlayPause,
             enabled = state.hasMedia,
-            // The one transport control with a coloured halo — §3.4's play-button shadow.
-            modifier = Modifier.accentShadow(),
-        )
+            // 66dp, accent-filled, coloured shadow (§3.4/R0.7) - the one control the eye lands on
+            // first.
+            modifier = Modifier
+                .size(PLAY_BUTTON_SIZE)
+                .accentShadow()
+                .background(MaterialTheme.colorScheme.primary, CircleShape),
+        ) {
+            Icon(
+                imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                tint = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
         TransportButton(
             icon = Icons.Filled.SkipNext,
             description = "Next track",
@@ -349,30 +371,6 @@ private fun TransportControls(
             description = "Forward 10 seconds",
             onClick = actions.onSkipForward,
             enabled = state.hasMedia,
-        )
-    }
-}
-
-/**
- * Shuffle and repeat sit apart from the transport row: they change how the queue behaves rather
- * than moving through it, and mixing them in makes the primary controls harder to hit.
- */
-@Composable
-private fun ModeControls(
-    state: PlayerState,
-    actions: NowPlayingActions,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ModeToggle(
-            active = state.shuffleEnabled,
-            icon = Icons.Filled.Shuffle,
-            description = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
-            onClick = actions.onToggleShuffle,
         )
         ModeToggle(
             active = state.repeatMode != RepeatMode.Off,
