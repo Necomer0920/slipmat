@@ -42,7 +42,6 @@ import com.example.slipmat.library.LibraryScreen
 import com.example.slipmat.nowplaying.MiniPlayer
 import com.example.slipmat.nowplaying.NowPlayingScreen
 import com.example.slipmat.nowplaying.QueueScreen
-import com.example.slipmat.performance.PerformanceScreen
 import com.example.slipmat.stub.StubScreen
 import com.example.slipmat.ui.components.PillTab
 
@@ -70,7 +69,6 @@ private object Routes {
 
     const val NOW_PLAYING = "nowPlaying"
     const val QUEUE = "queue"
-    const val PERFORMANCE = "performance"
 
     const val SEARCH = "search"
     const val SETTINGS = "settings"
@@ -100,9 +98,7 @@ fun SlipmatNavHost(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val onNowPlaying = currentRoute == Routes.NOW_PLAYING ||
-        currentRoute == Routes.QUEUE ||
-        currentRoute == Routes.PERFORMANCE
+    val onNowPlaying = currentRoute == Routes.NOW_PLAYING || currentRoute == Routes.QUEUE
     val onBrowseTab = BrowseTab.entries.any { it.route == currentRoute }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -174,18 +170,11 @@ fun SlipmatNavHost(
                 NowPlayingScreen(
                     onBack = { navController.popBackStack() },
                     onOpenQueue = { navController.navigate(Routes.QUEUE) },
-                    onOpenPerformance = { navController.navigate(Routes.PERFORMANCE) },
                     viewModel = hiltViewModel(sharedOwner),
                 )
             }
             composable(Routes.QUEUE) {
                 QueueScreen(
-                    onBack = { navController.popBackStack() },
-                    viewModel = hiltViewModel(sharedOwner),
-                )
-            }
-            composable(Routes.PERFORMANCE) {
-                PerformanceScreen(
                     onBack = { navController.popBackStack() },
                     viewModel = hiltViewModel(sharedOwner),
                 )

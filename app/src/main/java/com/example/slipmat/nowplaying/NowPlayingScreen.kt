@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -41,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +63,9 @@ import com.example.slipmat.core.media.PlayerState
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.RepeatMode
 import com.example.slipmat.core.media.SleepTimerState
+import com.example.slipmat.performance.PerformanceActions
+import com.example.slipmat.performance.PerformanceContent
+import kotlinx.coroutines.launch
 
 /**
  * Everything the now-playing screen can do, gathered so the body stays stateless.
@@ -88,11 +94,15 @@ data class NowPlayingActions(
     val onKeyLockChange: (Boolean) -> Unit = {},
 )
 
+/**
+ * Now Playing and Performance as two pages of one pager (§5.3), reached by swiping left or via the
+ * Performance door - not two separate nav destinations, so both keep sharing this one
+ * [NowPlayingViewModel] instance without a second waveform decode ever starting.
+ */
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
     onOpenQueue: () -> Unit,
-    onOpenPerformance: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = hiltViewModel(),
 ) {
@@ -102,35 +112,73 @@ fun NowPlayingScreen(
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val keyLock by viewModel.keyLock.collectAsStateWithLifecycle()
     val pitchRange by viewModel.pitchRange.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val delay by viewModel.delay.collectAsStateWithLifecycle()
+    val eq by viewModel.eq.collectAsStateWithLifecycle()
+    val eqPresets by viewModel.eqPresets.collectAsStateWithLifecycle()
 
-    NowPlayingContent(
-        state = state,
-        sleepTimer = sleepTimer,
-        sliderValue = sliderValue,
-        waveform = waveform,
-        keyLock = keyLock,
-        pitchRange = pitchRange,
-        actions = NowPlayingActions(
-            onBack = onBack,
-            onOpenQueue = onOpenQueue,
-            onOpenPerformance = onOpenPerformance,
-            onPlayPause = viewModel::togglePlayPause,
-            onNext = viewModel::next,
-            onPrevious = viewModel::previous,
-            onSkipForward = viewModel::skipForward,
-            onSkipBack = viewModel::skipBack,
-            onSeek = viewModel::seekTo,
-            onSeekFraction = viewModel::seekToFraction,
-            onToggleShuffle = viewModel::toggleShuffle,
-            onCycleRepeat = viewModel::cycleRepeatMode,
-            onStartSleepTimer = viewModel::startSleepTimer,
-            onCancelSleepTimer = viewModel::cancelSleepTimer,
-            onSliderChange = viewModel::onSliderChange,
-            onSliderChangeFinished = viewModel::onSliderChangeFinished,
-            onKeyLockChange = viewModel::onKeyLockChange,
-        ),
-        modifier = modifier,
-    )
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val scope = rememberCoroutineScope()
+    fun openPerformance() {
+        scope.launch { pagerState.animateScrollToPage(1) }
+    }
+    fun closePerformance() {
+        scope.launch { pagerState.animateScrollToPage(0) }
+    }
+
+    HorizontalPager(state = pagerState, modifier = modifier.fillMaxSize()) { page ->
+        when (page) {
+            0 -> NowPlayingContent(
+                state = state,
+                sleepTimer = sleepTimer,
+                sliderValue = sliderValue,
+                waveform = waveform,
+                keyLock = keyLock,
+                pitchRange = pitchRange,
+                actions = NowPlayingActions(
+                    onBack = onBack,
+                    onOpenQueue = onOpenQueue,
+                    onOpenPerformance = ::openPerformance,
+                    onPlayPause = viewModel::togglePlayPause,
+                    onNext = viewModel::next,
+                    onPrevious = viewModel::previous,
+                    onSkipForward = viewModel::skipForward,
+                    onSkipBack = viewModel::skipBack,
+                    onSeek = viewModel::seekTo,
+                    onSeekFraction = viewModel::seekToFraction,
+                    onToggleShuffle = viewModel::toggleShuffle,
+                    onCycleRepeat = viewModel::cycleRepeatMode,
+                    onStartSleepTimer = viewModel::startSleepTimer,
+                    onCancelSleepTimer = viewModel::cancelSleepTimer,
+                    onSliderChange = viewModel::onSliderChange,
+                    onSliderChangeFinished = viewModel::onSliderChangeFinished,
+                    onKeyLockChange = viewModel::onKeyLockChange,
+                ),
+            )
+
+            else -> PerformanceContent(
+                filter = filter,
+                delay = delay,
+                eq = eq,
+                eqPresets = eqPresets,
+                actions = PerformanceActions(
+                    onBack = ::closePerformance,
+                    onFilterEnabledChange = viewModel::onFilterEnabledChange,
+                    onFilterCutoffChange = viewModel::onFilterCutoffChange,
+                    onFilterModeChange = viewModel::onFilterModeChange,
+                    onDelayEnabledChange = viewModel::onDelayEnabledChange,
+                    onDelayTimeChange = viewModel::onDelayTimeChange,
+                    onDelayFeedbackChange = viewModel::onDelayFeedbackChange,
+                    onDelayMixChange = viewModel::onDelayMixChange,
+                    onEqEnabledChange = viewModel::onEqEnabledChange,
+                    onEqGainChange = viewModel::onEqGainChange,
+                    onSaveEqPreset = viewModel::onSaveEqPreset,
+                    onLoadEqPreset = viewModel::onLoadEqPreset,
+                    onDeleteEqPreset = viewModel::onDeleteEqPreset,
+                ),
+            )
+        }
+    }
 }
 
 @Composable
