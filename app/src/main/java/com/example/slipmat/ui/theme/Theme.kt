@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
  * §3.1's fixed dark ramp. No album, wallpaper or system dynamic-colour setting ever changes these
  * — only [artworkColorScheme] retinting the accent roles on top does.
  */
-private val DarkColorScheme = darkColorScheme(
+internal val DarkColorScheme = darkColorScheme(
     background = BackgroundDark,
     onBackground = OnBackgroundDark,
     surface = SurfaceDark,
@@ -35,7 +35,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 /** §3.1's fixed light ramp — the same roles as [DarkColorScheme], the light-mode values. */
-private val LightColorScheme = lightColorScheme(
+internal val LightColorScheme = lightColorScheme(
     background = BackgroundLight,
     onBackground = OnBackgroundLight,
     surface = SurfaceLight,

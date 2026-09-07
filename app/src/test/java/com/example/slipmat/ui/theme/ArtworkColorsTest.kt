@@ -1,8 +1,6 @@
 package com.example.slipmat.ui.theme
 
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -36,6 +34,9 @@ private val SEEDS = listOf(
     "near-black" to Color(0xFF101010),
     "near-white" to Color(0xFFF5F5F5),
     "pale pastel" to Color(0xFFFFCDD2),
+    // §3.2's two worked examples, re-verified against the redesign's fixed surface ramp (R0.5).
+    "red sleeve (§3.2 fixture)" to Color(0xFFFFB4A8),
+    "purple sleeve (§3.2 fixture)" to Color(0xFFC9B8FF),
 )
 
 /**
@@ -51,7 +52,7 @@ class ArtworkColorsTest {
     fun `every generated pair is readable, in both themes`() {
         for ((name, seed) in SEEDS) {
             for (dark in listOf(false, true)) {
-                val base = if (dark) darkColorScheme() else lightColorScheme()
+                val base = if (dark) DarkColorScheme else LightColorScheme
                 val scheme = artworkColorScheme(base, seed, dark)
 
                 for ((role, pair) in scheme.accentPairs()) {
@@ -69,7 +70,7 @@ class ArtworkColorsTest {
     fun `accents stand out from the surface behind them`() {
         for ((name, seed) in SEEDS) {
             for (dark in listOf(false, true)) {
-                val base = if (dark) darkColorScheme() else lightColorScheme()
+                val base = if (dark) DarkColorScheme else LightColorScheme
                 val scheme = artworkColorScheme(base, seed, dark)
 
                 val accents = listOf(
@@ -91,7 +92,7 @@ class ArtworkColorsTest {
 
     @Test
     fun `the artwork changes the accents but never the surfaces`() {
-        val base = lightColorScheme()
+        val base = LightColorScheme
 
         val scheme = artworkColorScheme(base, Color(0xFF2E7D32), dark = false)
 
@@ -104,7 +105,7 @@ class ArtworkColorsTest {
 
     @Test
     fun `greyscale artwork is left alone rather than guessed at`() {
-        val base = lightColorScheme()
+        val base = LightColorScheme
 
         // A monochrome sleeve carries no hue; deriving one produces mud from noise.
         val scheme = artworkColorScheme(base, Color(0xFF808080), dark = false)
