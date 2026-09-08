@@ -256,7 +256,12 @@ private fun AppBottomBar(
     }
 }
 
-/** The four browse modes, as a pill tab row — replaces the bottom `NavigationBar` (§4.1). */
+/**
+ * The four browse modes, as a pill tab row — replaces the bottom `NavigationBar` (§4.1). Each tab
+ * gets equal width (`Modifier.weight(1f)`, the same pattern `SegmentedToggle` already uses) rather
+ * than the mock's natural-width, left-packed row — a deliberate product deviation from the literal
+ * handoff, not an oversight.
+ */
 @Composable
 private fun LibraryTabRow(
     selected: BrowseTab,
@@ -265,10 +270,15 @@ private fun LibraryTabRow(
 ) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         BrowseTab.entries.forEach { tab ->
-            PillTab(selected = tab == selected, onClick = { onSelect(tab) }, label = tab.label)
+            PillTab(
+                selected = tab == selected,
+                onClick = { onSelect(tab) },
+                label = tab.label,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
