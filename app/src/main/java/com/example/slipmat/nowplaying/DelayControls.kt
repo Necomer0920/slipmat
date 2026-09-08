@@ -75,7 +75,7 @@ private fun LabelledKnob(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        RotaryKnob(value = knobValue, min = min, max = max, onValueChange = onValueChange)
+        RotaryKnob(value = knobValue, min = min, max = max, onValueChange = onValueChange, label = label)
         Text(text = label, style = MaterialTheme.typography.labelMedium)
         Text(
             text = value,

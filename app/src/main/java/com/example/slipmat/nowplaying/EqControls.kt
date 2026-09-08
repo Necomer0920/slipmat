@@ -273,7 +273,7 @@ private fun EqPresetChips(
                     alwaysFilled = true,
                 )
             }
-            Chip(selected = selectedPresetName == null, onClick = {}, label = "Custom", alwaysFilled = true)
+            Chip(selected = selectedPresetName == null, onClick = {}, label = "Custom", alwaysFilled = true, enabled = false)
             for (preset in presets) {
                 Chip(
                     selected = selectedPresetName == preset.name,

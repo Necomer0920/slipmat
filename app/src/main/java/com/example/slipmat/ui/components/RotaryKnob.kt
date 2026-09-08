@@ -3,6 +3,7 @@ package com.example.slipmat.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -13,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.cos
@@ -52,6 +56,11 @@ private val KNOB_POINTER_INSET = 18.dp
  * §4.3's rotary knob primitive: a 76dp ring on `surfaceContainerLow` with a 2dp `outlineVariant`
  * border and a `primary` pointer line rotating −135°…+135° across `min..max`. Bound to a specific
  * range and label by its caller (R3.10's three delay knobs); this composable only knows the knob.
+ *
+ * [label] names the control for TalkBack (R5.3 - previously carried no semantics at all); the
+ * knob's own value/range comes through [androidx.compose.foundation.progressSemantics] in the
+ * caller's real units (ms, a feedback fraction, a mix fraction) so an "adjust" gesture's step size
+ * makes sense in that domain, the same reasoning R3.12 applied to the EQ handles.
  */
 @Composable
 fun RotaryKnob(
@@ -59,6 +68,7 @@ fun RotaryKnob(
     min: Float,
     max: Float,
     onValueChange: (Float) -> Unit,
+    label: String,
     modifier: Modifier = Modifier,
 ) {
     val containerLow = MaterialTheme.colorScheme.surfaceContainerLow
@@ -70,6 +80,14 @@ fun RotaryKnob(
     Canvas(
         modifier = modifier
             .size(KNOB_SIZE)
+            .progressSemantics(value, min..max)
+            .semantics {
+                contentDescription = label
+                setProgress { target ->
+                    onValueChange(target.coerceIn(min, max))
+                    true
+                }
+            }
             .pointerInput(min, max) {
                 detectVerticalDragGestures(
                     onDragStart = {

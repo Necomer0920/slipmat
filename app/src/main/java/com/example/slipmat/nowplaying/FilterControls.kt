@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,11 +21,15 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.core.media.dsp.FILTER_MAX_HZ
 import com.example.slipmat.core.media.dsp.FILTER_MIN_HZ
 import com.example.slipmat.core.media.dsp.FilterMode
 import com.example.slipmat.core.media.dsp.FilterState
+import com.example.slipmat.core.media.dsp.frequencyToSlider
 import com.example.slipmat.core.media.dsp.sliderToFrequency
 import com.example.slipmat.ui.components.SegmentedToggle
 import java.util.Locale
@@ -82,6 +87,10 @@ private const val FILTER_FILL_ALPHA = 0.55f
  * A 0f..1f sweep, custom-drawn like [PitchTempoControls]'s tempo track (§3.4) rather than a styled
  * M3 `Slider` - the fill running from the rail's own start, not its centre, is the one visible
  * difference between the two.
+ *
+ * Carries [progressSemantics] in real Hz (R5.3 - previously no semantics at all, so TalkBack had no
+ * way to read or adjust the cutoff), converting back through [frequencyToSlider] since this
+ * composable otherwise only knows the 0f..1f track position, not the frequency curve.
  */
 @Composable
 private fun FilterCutoffTrack(
@@ -98,6 +107,14 @@ private fun FilterCutoffTrack(
         modifier = modifier
             .fillMaxWidth()
             .height(FILTER_TRACK_TOUCH_HEIGHT)
+            .progressSemantics(sliderToFrequency(position), FILTER_MIN_HZ..FILTER_MAX_HZ)
+            .semantics {
+                contentDescription = "Filter cutoff"
+                setProgress { target ->
+                    onValueChange(frequencyToSlider(target))
+                    true
+                }
+            }
             .pointerInput(Unit) {
                 detectTapGestures { offset -> onValueChange(valueAt(offset.x, size.width.toFloat())) }
             }

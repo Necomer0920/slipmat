@@ -111,7 +111,7 @@ internal fun PerformanceContent(
                     PerformanceTab.Delay -> actions.onDelayEnabledChange
                     PerformanceTab.Eq -> actions.onEqEnabledChange
                 }
-                EffectDot(enabled = enabled, onClick = { onDisable(false) })
+                EffectDot(enabled = enabled, onClick = { onDisable(false) }, label = tab.label)
             },
         )
         Column(

@@ -1,5 +1,6 @@
 package com.example.slipmat.nowplaying
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +61,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.example.slipmat.ui.components.Chip
 import com.example.slipmat.ui.theme.CornerAlbumCell
 import com.example.slipmat.ui.theme.CornerLarge
@@ -398,11 +400,21 @@ private fun SleepTimerButton(
             SleepTimerIcon()
         }
         if (expanded) {
+            // R5.3: `Popup`'s own `dismissOnBackPress` (the default) hooks the legacy
+            // dispatchKeyEvent path for KEYCODE_BACK, which is a separate mechanism from the
+            // OnBackPressedDispatcher NavHost uses for gesture/predictive back - on a real back
+            // press both fired, dismissing the popover *and* popping Now Playing in one gesture
+            // (confirmed via `uiautomator dump` landing back on the Library tab). Disabling the
+            // popup's own handling and registering a single explicit BackHandler instead - the
+            // same dispatcher NavHost uses - means only the popover's callback (the most recently
+            // added, so highest-priority) consumes the event while it's open.
+            BackHandler(enabled = expanded) { expanded = false }
             val gapPx = with(LocalDensity.current) { 4.dp.roundToPx() }
             Popup(
                 alignment = Alignment.TopEnd,
                 offset = IntOffset(0, gapPx),
                 onDismissRequest = { expanded = false },
+                properties = PopupProperties(dismissOnBackPress = false),
             ) {
                 Surface(
                     modifier = Modifier.width(SLEEP_MENU_WIDTH),

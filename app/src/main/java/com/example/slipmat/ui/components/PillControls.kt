@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.slipmat.ui.theme.CornerLarge
 
@@ -83,6 +85,11 @@ internal fun chipContainerColor(
 /**
  * EQ preset chips (Flat / Bass Boost / Vocal / Custom / saved presets). `trailing` renders after
  * the label - a saved preset's own delete glyph (R3.13); built-ins and Custom leave it `null`.
+ *
+ * [enabled] defaults to `true`; the Custom chip (R5.3) is the one caller that passes `false` -
+ * "there is nothing to switch it to" (its own doc comment), so it was announcing to TalkBack as a
+ * fully actionable button that silently did nothing when activated. `false` drops the click action
+ * from this node's semantics entirely rather than merely no-op'ing `onClick`.
  */
 @Composable
 fun Chip(
@@ -91,13 +98,14 @@ fun Chip(
     label: String,
     modifier: Modifier = Modifier,
     alwaysFilled: Boolean = false,
+    enabled: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = TouchMinimum, minHeight = TouchMinimum)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
@@ -181,14 +189,23 @@ private val EffectDotSize = 8.dp
 /**
  * The tap target that turns an effect back off (§5.1) — touching any control in its panel is what
  * turns it on (R3.6), so this dot is the only way to switch it off again without opening the panel.
+ *
+ * [label] names the effect ("Filter"/"Delay"/"EQ") for TalkBack (R5.3) — this dot previously
+ * carried no semantics at all, so a screen reader had no name or on/off state for it whatsoever.
+ * It sits inside `SegmentedToggle`'s own clickable tab (a nested-clickable structure that is R3.5's
+ * deliberate design, §5.1 - the dot is the tab's off switch, not something this fix restructures);
+ * `uiautomator dump` confirms the description lands in the accessibility tree at this control's
+ * bounds, the same standard the sweep's other fixes were checked against, but live TalkBack speech
+ * through the nested structure was not captured (touch exploration intercepts injected adb taps).
  */
 @Composable
-fun EffectDot(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun EffectDot(enabled: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = TouchMinimum, minHeight = TouchMinimum)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "$label effect, ${if (enabled) "on" else "off"}" },
         contentAlignment = Alignment.Center,
     ) {
         Box(

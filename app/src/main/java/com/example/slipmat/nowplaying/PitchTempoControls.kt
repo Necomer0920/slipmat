@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -32,12 +33,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
 import android.view.HapticFeedbackConstants
 import com.example.slipmat.core.media.PitchRange
 import com.example.slipmat.core.media.isAtDetent
 import com.example.slipmat.core.media.playingBpm
 import com.example.slipmat.core.media.semitonesFor
+import com.example.slipmat.core.media.sliderValueForPercent
 import com.example.slipmat.core.media.tempoPercent
 import com.example.slipmat.ui.theme.CornerLarge
 import com.example.slipmat.ui.theme.CornerTempoCard
@@ -114,6 +119,7 @@ fun PitchTempoControls(
 
             TempoTrack(
                 sliderValue = sliderValue,
+                range = range,
                 onValueChange = { raw ->
                     val nowAtDetent = isAtDetent(raw)
                     // A tick as the slider snaps home, so centre can be found without looking.
@@ -157,10 +163,16 @@ private const val TEMPO_FILL_ALPHA = 0.55f
  * §4.2's tempo track: a 4dp rail, a centre detent mark, a 55%-opacity fill running from centre to
  * the thumb rather than from either end, and a 20dp thumb. Custom-drawn rather than a styled M3
  * `Slider` - the centre-anchored fill and detent tick have no equivalent in `SliderDefaults`.
+ *
+ * Carries [progressSemantics] in real percent (R5.3, found during the same sweep that fixed the
+ * filter cutoff and delay knobs - this track had the identical bare-`Canvas`-with-no-semantics
+ * gap), converting back through [sliderValueForPercent] since this composable otherwise only knows
+ * the raw -1f..1f slider value, not the signed percentage [range] maps it to.
  */
 @Composable
 private fun TempoTrack(
     sliderValue: Float,
+    range: PitchRange,
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: () -> Unit,
     modifier: Modifier = Modifier,
@@ -176,6 +188,15 @@ private fun TempoTrack(
         modifier = modifier
             .fillMaxWidth()
             .height(TEMPO_TRACK_TOUCH_HEIGHT)
+            .progressSemantics(tempoPercent(sliderValue, range), -range.percent..range.percent)
+            .semantics {
+                contentDescription = "Tempo"
+                setProgress { target ->
+                    onValueChange(sliderValueForPercent(target, range))
+                    onValueChangeFinished()
+                    true
+                }
+            }
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     onValueChange(valueAt(offset.x, size.width.toFloat()))
