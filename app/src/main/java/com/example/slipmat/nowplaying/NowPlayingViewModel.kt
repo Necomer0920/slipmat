@@ -122,6 +122,7 @@ class NowPlayingViewModel @Inject constructor(
     /** One button, three states: off → all → one → off. */
     fun cycleRepeatMode() = playback.setRepeatMode(state.value.repeatMode.next())
 
+    /** Unused by any UI right now - §5.7 defers queue reordering, it doesn't remove it. */
     fun moveQueueItem(fromIndex: Int, toIndex: Int) = playback.moveQueueItem(fromIndex, toIndex)
 
     fun skipToQueueIndex(index: Int) = playback.skipToQueueIndex(index)

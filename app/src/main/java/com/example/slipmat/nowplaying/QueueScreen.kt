@@ -15,24 +15,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.ui.theme.CornerExtraLarge
+import com.example.slipmat.ui.theme.CornerExtraSmall
+import com.example.slipmat.ui.theme.CornerSmall
 
 /**
  * The queue, drawn as an overlay above Now Playing rather than pushed as its own destination
@@ -68,17 +73,22 @@ fun QueueSheet(
                 Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close")
             }
         }
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             items(count = items.size) { index ->
                 QueueRow(item = items[index], isPlaying = index == playingIndex, onClick = { onPlay(index) })
-                HorizontalDivider()
             }
         }
     }
 }
 
 private val ROW_MIN_HEIGHT = 56.dp
+private val ROW_ARTWORK_SIZE = 40.dp
 
+/** Same shape as [TrackRow] (§4.6 asks the detail screens for the same match) - artwork, clip,
+ * padding and corner radius all pulled from that one convention rather than a second one here. */
 @Composable
 private fun QueueRow(
     item: QueueItem,
@@ -90,24 +100,30 @@ private fun QueueRow(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = ROW_MIN_HEIGHT)
+            .clip(RoundedCornerShape(CornerSmall))
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        SubcomposeAsyncImage(
+            model = item.artworkUri,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(ROW_ARTWORK_SIZE).clip(RoundedCornerShape(CornerExtraSmall)),
+            error = { QueueArtworkPlaceholder() },
+            loading = { QueueArtworkPlaceholder() },
+        )
         Column(
-            modifier = Modifier.weight(1f).padding(end = 12.dp),
+            modifier = Modifier.weight(1f).padding(start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = item.title ?: "Unknown title",
                 style = MaterialTheme.typography.bodyLarge,
-                // Bold and tinted, not tint-only (§5.8's rule applied to the one state this row has).
+                // Bold only, not tinted - §5.8 rejects tint as the sole signal, and bold alone
+                // already reads without depending on hue (the reasoning TrackRow's own row uses).
                 fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
-                color = if (isPlaying) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -121,6 +137,14 @@ private fun QueueRow(
         }
         SixDotGlyph()
     }
+}
+
+@Composable
+private fun QueueArtworkPlaceholder() {
+    Surface(
+        modifier = Modifier.size(ROW_ARTWORK_SIZE),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    ) {}
 }
 
 /**
