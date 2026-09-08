@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.slipmat.core.data.db.ArtistSummary
+import com.example.slipmat.core.data.library.ScanState
 
 @Composable
 fun ArtistListScreen(
@@ -34,6 +35,12 @@ fun ArtistListScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val artists by viewModel.artists.collectAsStateWithLifecycle()
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+
+    if (artists.isEmpty() && scanState is ScanState.Complete) {
+        EmptyLibrary(modifier.fillMaxSize())
+        return
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),

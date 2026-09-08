@@ -6,6 +6,7 @@ import com.example.slipmat.core.data.db.AlbumSummary
 import com.example.slipmat.core.data.db.ArtistSummary
 import com.example.slipmat.core.data.db.FolderSummary
 import com.example.slipmat.core.data.library.LibraryRepository
+import com.example.slipmat.core.data.library.ScanState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +36,10 @@ class LibraryViewModel @Inject constructor(
     val artists: StateFlow<List<ArtistSummary>> = repository.observeArtists().asList()
     val albums: StateFlow<List<AlbumSummary>> = repository.observeAlbums().asList()
     val folders: StateFlow<List<FolderSummary>> = repository.observeFolders().asList()
+
+    // Already a hot StateFlow on the repository, so exposing it here piggybacks on nothing -
+    // it does not pull the track query in behind it the way combining with uiState would.
+    val scanState: StateFlow<ScanState> = repository.scanState
 
     private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.asList(): StateFlow<List<T>> = stateIn(
         scope = viewModelScope,

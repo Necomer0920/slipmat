@@ -65,7 +65,7 @@ internal fun LibraryContent(
 }
 
 @Composable
-private fun EmptyLibrary(modifier: Modifier = Modifier) {
+internal fun EmptyLibrary(modifier: Modifier = Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Text(
             text = "No audio files found on this device",

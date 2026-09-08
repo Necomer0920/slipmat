@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.slipmat.core.data.db.FolderSummary
+import com.example.slipmat.core.data.library.ScanState
 import com.example.slipmat.ui.theme.CornerFolderTile
 
 @Composable
@@ -36,6 +37,12 @@ fun FolderListScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+
+    if (folders.isEmpty() && scanState is ScanState.Complete) {
+        EmptyLibrary(modifier.fillMaxSize())
+        return
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),

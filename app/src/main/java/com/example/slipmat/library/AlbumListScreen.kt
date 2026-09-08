@@ -29,6 +29,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
 import com.example.slipmat.core.data.db.AlbumSummary
+import com.example.slipmat.core.data.library.ScanState
 import com.example.slipmat.ui.theme.CornerAlbumCell
 
 @Composable
@@ -38,6 +39,12 @@ fun AlbumListScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+
+    if (albums.isEmpty() && scanState is ScanState.Complete) {
+        EmptyLibrary(modifier.fillMaxSize())
+        return
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
