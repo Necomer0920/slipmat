@@ -46,7 +46,9 @@ fun MiniPlayer(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 8.dp),
+            // Bottom padding separates the card from the bottom nav bar right below it — with
+            // none, the card's edge sat flush against the nav bar's own content.
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
         shape = RoundedCornerShape(CornerMedium),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
