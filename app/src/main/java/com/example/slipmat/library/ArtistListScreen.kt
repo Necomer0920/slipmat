@@ -39,15 +39,14 @@ fun ArtistListScreen(
 
     if (artists.isEmpty() && scanState is ScanState.Complete) {
         EmptyLibrary(modifier.fillMaxSize())
-        return
-    }
-
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
-    ) {
-        items(items = artists, key = { it.artist }) { artist ->
-            ArtistRow(artist = artist, onClick = { onArtistClick(artist.artist) })
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+        ) {
+            items(items = artists, key = { it.artist }) { artist ->
+                ArtistRow(artist = artist, onClick = { onArtistClick(artist.artist) })
+            }
         }
     }
 }

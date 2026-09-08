@@ -41,15 +41,14 @@ fun FolderListScreen(
 
     if (folders.isEmpty() && scanState is ScanState.Complete) {
         EmptyLibrary(modifier.fillMaxSize())
-        return
-    }
-
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
-    ) {
-        items(items = folders, key = { it.folderPath }) { folder ->
-            FolderRow(folder = folder, onClick = { onFolderClick(folder.folderPath) })
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+        ) {
+            items(items = folders, key = { it.folderPath }) { folder ->
+                FolderRow(folder = folder, onClick = { onFolderClick(folder.folderPath) })
+            }
         }
     }
 }

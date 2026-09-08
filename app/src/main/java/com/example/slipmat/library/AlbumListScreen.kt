@@ -43,21 +43,20 @@ fun AlbumListScreen(
 
     if (albums.isEmpty() && scanState is ScanState.Complete) {
         EmptyLibrary(modifier.fillMaxSize())
-        return
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        items(items = albums, key = { it.album + '|' + it.albumArtist }) { album ->
-            AlbumCard(
-                album = album,
-                onClick = { onAlbumClick(album.album, album.albumArtist) },
-            )
+    } else {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            items(items = albums, key = { it.album + '|' + it.albumArtist }) { album ->
+                AlbumCard(
+                    album = album,
+                    onClick = { onAlbumClick(album.album, album.albumArtist) },
+                )
+            }
         }
     }
 }
