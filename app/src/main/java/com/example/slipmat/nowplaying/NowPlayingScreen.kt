@@ -54,6 +54,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
@@ -350,7 +352,15 @@ private fun SleepTimerButton(
     }
 
     Box(modifier = modifier) {
-        IconButton(onClick = { expanded = true }) {
+        val description = if (sleepTimer is SleepTimerState.Running) {
+            "Sleep timer, sleeping in ${formatCountdown(sleepTimer.remainingMs)}"
+        } else {
+            "Sleep timer"
+        }
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.semantics { contentDescription = description },
+        ) {
             SleepTimerIcon()
         }
         if (expanded) {
