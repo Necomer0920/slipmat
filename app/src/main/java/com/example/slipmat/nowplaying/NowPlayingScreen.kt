@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,7 +103,6 @@ data class NowPlayingActions(
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
-    onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NowPlayingViewModel = hiltViewModel(),
 ) {
@@ -126,6 +126,10 @@ fun NowPlayingScreen(
         scope.launch { pagerState.animateScrollToPage(0) }
     }
 
+    // An overlay above this screen, not a nav destination (§4.2) - local UI state rather than
+    // anything the view model tracks.
+    var showQueue by rememberSaveable { mutableStateOf(false) }
+
     HorizontalPager(state = pagerState, modifier = modifier.fillMaxSize()) { page ->
         when (page) {
             0 -> NowPlayingContent(
@@ -137,7 +141,7 @@ fun NowPlayingScreen(
                 pitchRange = pitchRange,
                 actions = NowPlayingActions(
                     onBack = onBack,
-                    onOpenQueue = onOpenQueue,
+                    onOpenQueue = { showQueue = true },
                     onOpenPerformance = ::openPerformance,
                     onPlayPause = viewModel::togglePlayPause,
                     onNext = viewModel::next,
@@ -180,6 +184,15 @@ fun NowPlayingScreen(
                 ),
             )
         }
+    }
+
+    if (showQueue) {
+        QueueSheet(
+            items = state.queue,
+            playingIndex = state.queueIndex,
+            onPlay = viewModel::skipToQueueIndex,
+            onDismiss = { showQueue = false },
+        )
     }
 }
 

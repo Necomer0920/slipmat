@@ -41,7 +41,6 @@ import com.example.slipmat.core.media.QueueItem
 import com.example.slipmat.library.LibraryScreen
 import com.example.slipmat.nowplaying.MiniPlayer
 import com.example.slipmat.nowplaying.NowPlayingScreen
-import com.example.slipmat.nowplaying.QueueScreen
 import com.example.slipmat.stub.StubScreen
 import com.example.slipmat.ui.components.PillTab
 
@@ -68,7 +67,6 @@ private object Routes {
     fun folder(path: String) = "folder/${Uri.encode(path)}"
 
     const val NOW_PLAYING = "nowPlaying"
-    const val QUEUE = "queue"
 
     const val SEARCH = "search"
     const val SETTINGS = "settings"
@@ -81,15 +79,17 @@ fun SlipmatNavHost(
     navController: NavHostController = rememberNavController(),
 ) {
     /**
-     * One `NowPlayingViewModel` for the strip, the full screen and the queue.
+     * One `NowPlayingViewModel` for the strip and the full screen. The queue rides along inside the
+     * full screen as an overlay (§4.2) rather than a separate `NavBackStackEntry`, so it needs no
+     * resolution of its own.
      *
-     * A bare `hiltViewModel()` resolves against whatever owner is nearest, and these three do not
+     * A bare `hiltViewModel()` resolves against whatever owner is nearest, and these two do not
      * share one: the strip sits outside the `NavHost`, so it gets the Activity's store, while the
-     * screens inside get their own `NavBackStackEntry`. That quietly produced *two* view models,
-     * each running its own waveform decode on every track change — several seconds of duplicated
-     * work per track, invisible because the two are never on screen at the same time.
+     * screen inside gets its own `NavBackStackEntry`. That quietly produced *two* view models, each
+     * running its own waveform decode on every track change — several seconds of duplicated work
+     * per track, invisible because the two are never on screen at the same time.
      *
-     * Resolving all three against the owner here — the Activity — also means walking back to the
+     * Resolving both against the owner here — the Activity — also means walking back to the
      * library and returning does not re-decode the waveform that was already on screen.
      */
     val sharedOwner = checkNotNull(LocalViewModelStoreOwner.current) {
@@ -98,7 +98,7 @@ fun SlipmatNavHost(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val onNowPlaying = currentRoute == Routes.NOW_PLAYING || currentRoute == Routes.QUEUE
+    val onNowPlaying = currentRoute == Routes.NOW_PLAYING
     val onBrowseTab = BrowseTab.entries.any { it.route == currentRoute }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -168,13 +168,6 @@ fun SlipmatNavHost(
             }
             composable(Routes.NOW_PLAYING) {
                 NowPlayingScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenQueue = { navController.navigate(Routes.QUEUE) },
-                    viewModel = hiltViewModel(sharedOwner),
-                )
-            }
-            composable(Routes.QUEUE) {
-                QueueScreen(
                     onBack = { navController.popBackStack() },
                     viewModel = hiltViewModel(sharedOwner),
                 )
