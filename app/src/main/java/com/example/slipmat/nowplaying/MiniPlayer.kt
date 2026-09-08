@@ -2,6 +2,7 @@ package com.example.slipmat.nowplaying
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -84,18 +85,27 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            // §5.11: visual size is the design's (34dp); touch size is at least 48dp. Putting
+            // `.size(PlayButtonSize)` directly on the IconButton (as before) shrank its whole
+            // touch target to 34dp, since that fixes the constraint before IconButton's own
+            // default ~48dp minimum can apply - the 34dp circle now lives on an inner Box instead,
+            // leaving IconButton's own bounds at its unmodified default.
             IconButton(
                 onClick = viewModel::togglePlayPause,
                 enabled = state.hasMedia,
-                modifier = Modifier
-                    .size(PlayButtonSize)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
             ) {
-                Icon(
-                    imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (state.isPlaying) "Pause" else "Play",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                )
+                Box(
+                    modifier = Modifier
+                        .size(PlayButtonSize)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
             }
         }
     }

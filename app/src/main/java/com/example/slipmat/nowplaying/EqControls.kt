@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -281,11 +282,20 @@ private fun EqPresetChips(
                     label = preset.name,
                     alwaysFilled = true,
                     trailing = {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Delete ${preset.name}",
-                            modifier = Modifier.size(14.dp).clickable { onDelete(preset.name) },
-                        )
+                        // §5.11: visual size is the design's (14dp); touch size is at least 48dp -
+                        // the icon alone was the whole touch target before (R5.4).
+                        Box(
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                .clickable { onDelete(preset.name) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Delete ${preset.name}",
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     },
                 )
             }
