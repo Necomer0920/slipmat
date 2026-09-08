@@ -62,6 +62,7 @@ fun PitchTempoControls(
     onSliderChangeFinished: () -> Unit,
     onKeyLockChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    showStatusLine: Boolean = true,
 ) {
     val view = LocalView.current
     // Remembered so the haptic fires on entering the detent, not on every frame spent inside it.
@@ -126,15 +127,21 @@ fun PitchTempoControls(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Text(
-                text = if (keyLock) {
-                    "Key holds while tempo changes"
-                } else {
-                    "Pitch follows tempo · ${formatSemitones(semitonesFor(percent))}"
-                },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // §5.4's third pressure-absorption step: dropped on a short screen once shrinking the
+            // artwork and collapsing the door haven't freed enough room on their own. Purely
+            // descriptive of a state the key-lock pill itself already shows, so nothing is lost
+            // that isn't recoverable by looking at the pill.
+            if (showStatusLine) {
+                Text(
+                    text = if (keyLock) {
+                        "Key holds while tempo changes"
+                    } else {
+                        "Pitch follows tempo · ${formatSemitones(semitonesFor(percent))}"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -65,7 +66,9 @@ import com.example.slipmat.ui.theme.CornerLarge
 import com.example.slipmat.ui.theme.CornerPerformanceDoor
 import com.example.slipmat.ui.theme.accentShadow
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
@@ -204,6 +207,18 @@ fun NowPlayingScreen(
     }
 }
 
+// §5.4: on a short screen, Now Playing stays unscrolled and absorbs the pressure itself in a
+// fixed order rather than clipping - artwork shrinks toward its floor first, then the door
+// collapses to an icon, then the tempo card's status line drops. Only once all three are spent
+// does the column fall back to scrolling (`verticalScroll` below is the permanent safety net).
+// Heights are for the whole content area (header + scrolling body + door) and were tuned and
+// verified against 360x640dp @ fontScale 1.3 (R5.2) - a specific reference point, not a general
+// breakpoint system.
+private val HEIGHT_ROOMY = 700.dp
+private val HEIGHT_ARTWORK_FLOOR = 600.dp
+private val HEIGHT_DOOR_COLLAPSE = 560.dp
+private val HEIGHT_STATUS_LINE_DROP = 520.dp
+
 @Composable
 internal fun NowPlayingContent(
     state: PlayerState,
@@ -216,64 +231,83 @@ internal fun NowPlayingContent(
     pitchRange: PitchRange = PitchRange.Standard,
     sourceBpm: Float? = null,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
-        NowPlayingHeader(sleepTimer = sleepTimer, actions = actions)
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // `maxHeight` is a layout constraint in dp - it does not shrink when `fontScale` grows,
+        // even though the Sp-sized title/tempo/status text it has to fit does. Dividing by
+        // fontScale turns it into "how much room is there, in fontScale=1x-equivalent units" so
+        // the same breakpoints correctly demand more room once text starts rendering larger
+        // (found via R5.2's own device check: at 360x640/fontScale 1.3, maxHeight=584dp - above
+        // HEIGHT_DOOR_COLLAPSE and HEIGHT_STATUS_LINE_DROP as raw dp, so neither fired and the
+        // transport row was pushed off-screen even with the artwork already at its floor).
+        val effectiveHeight = maxHeight / LocalDensity.current.fontScale
+        val artworkFraction = ((effectiveHeight - HEIGHT_ARTWORK_FLOOR) / (HEIGHT_ROOMY - HEIGHT_ARTWORK_FLOOR))
+            .coerceIn(0f, 1f)
+        val artworkSize = lerp(ARTWORK_SIZE_MIN, ARTWORK_SIZE_MAX, artworkFraction)
+        val doorCollapsed = effectiveHeight < HEIGHT_DOOR_COLLAPSE
+        val showTempoStatusLine = effectiveHeight >= HEIGHT_STATUS_LINE_DROP
 
-        // Scrollable, because the content is taller than a short screen on top of a long title —
-        // and on a tall one it should still sit centred. The door sits outside this weighted,
-        // scrolling region rather than as its last item, so it stays bottom-anchored (§4.2)
-        // regardless of how much the content above it scrolls.
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Artwork(state)
+        Column(modifier = Modifier.fillMaxSize()) {
+            NowPlayingHeader(sleepTimer = sleepTimer, actions = actions)
 
-            Text(
-                text = state.title ?: "Nothing playing",
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = state.artist ?: "",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Scrollable, because the content can still be taller than a short screen on top of
+            // a long title even after all three compaction steps above - and on a tall screen it
+            // should still sit centred. The door sits outside this weighted, scrolling region
+            // rather than as its last item, so it stays bottom-anchored (§4.2) regardless of how
+            // much the content above it scrolls.
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Artwork(state, size = artworkSize)
 
-            WaveformSeekBar(
-                peaks = waveform,
-                progress = state.progress,
-                durationMs = state.durationMs,
-                onSeek = actions.onSeekFraction,
+                Text(
+                    text = state.title ?: "Nothing playing",
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = state.artist ?: "",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                WaveformSeekBar(
+                    peaks = waveform,
+                    progress = state.progress,
+                    durationMs = state.durationMs,
+                    onSeek = actions.onSeekFraction,
+                )
+                PitchTempoControls(
+                    sliderValue = sliderValue,
+                    keyLock = keyLock,
+                    range = pitchRange,
+                    sourceBpm = state.sourceBpm,
+                    onSliderChange = actions.onSliderChange,
+                    onSliderChangeFinished = actions.onSliderChangeFinished,
+                    onKeyLockChange = actions.onKeyLockChange,
+                    showStatusLine = showTempoStatusLine,
+                )
+                TransportRow(state = state, actions = actions)
+                SleepTimerControls(state = sleepTimer, onCancel = actions.onCancelSleepTimer)
+            }
+
+            PerformanceDoor(
+                onClick = actions.onOpenPerformance,
+                collapsed = doorCollapsed,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
             )
-            PitchTempoControls(
-                sliderValue = sliderValue,
-                keyLock = keyLock,
-                range = pitchRange,
-                sourceBpm = state.sourceBpm,
-                onSliderChange = actions.onSliderChange,
-                onSliderChangeFinished = actions.onSliderChangeFinished,
-                onKeyLockChange = actions.onKeyLockChange,
-            )
-            TransportRow(state = state, actions = actions)
-            SleepTimerControls(state = sleepTimer, onCancel = actions.onCancelSleepTimer)
         }
-
-        PerformanceDoor(
-            onClick = actions.onOpenPerformance,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-        )
     }
 }
 
@@ -443,43 +477,60 @@ private fun SleepTimerIcon(modifier: Modifier = Modifier) {
  * The pill that opens Performance (§4.2/§4.3) - bottom-anchored below the scrolling content rather
  * than as its last item, so it stays put and visible on a short screen instead of scrolling away
  * or landing wherever the content above it happens to end.
+ *
+ * [collapsed] is §5.4's second pressure-absorption step: on a short screen, the label is dropped
+ * and only the icon remains, which is also why the icon carries the description in that state
+ * rather than staying decorative.
  */
 @Composable
-private fun PerformanceDoor(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun PerformanceDoor(onClick: () -> Unit, collapsed: Boolean, modifier: Modifier = Modifier) {
     Surface(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(CornerPerformanceDoor),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        Row(
-            modifier = Modifier
-                .defaultMinSize(minHeight = 48.dp)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(text = "Filter · Delay · EQ", style = MaterialTheme.typography.labelLarge)
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
+        if (collapsed) {
+            Box(
+                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Filter, Delay, EQ",
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 48.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(text = "Filter · Delay · EQ", style = MaterialTheme.typography.labelLarge)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
 
-private val ARTWORK_SIZE = 168.dp
+private val ARTWORK_SIZE_MAX = 168.dp
+private val ARTWORK_SIZE_MIN = 120.dp
 
 @Composable
-private fun Artwork(state: PlayerState, modifier: Modifier = Modifier) {
+private fun Artwork(state: PlayerState, size: Dp, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(CornerLarge)
     SubcomposeAsyncImage(
         model = state.artworkUri,
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier
-            .size(ARTWORK_SIZE)
+            .size(size)
             .shadow(elevation = 16.dp, shape = shape)
             .clip(shape),
         error = { ArtworkPlaceholder() },
