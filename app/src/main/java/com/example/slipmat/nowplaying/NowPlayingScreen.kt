@@ -1,5 +1,6 @@
 package com.example.slipmat.nowplaying
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +24,6 @@ import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Replay10
@@ -40,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,8 +51,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import com.example.slipmat.ui.components.Chip
+import com.example.slipmat.ui.theme.CornerAlbumCell
 import com.example.slipmat.ui.theme.CornerLarge
 import com.example.slipmat.ui.theme.CornerPerformanceDoor
 import com.example.slipmat.ui.theme.accentShadow
@@ -78,7 +85,6 @@ data class NowPlayingActions(
     val onBack: () -> Unit = {},
     val onOpenQueue: () -> Unit = {},
     val onOpenPerformance: () -> Unit = {},
-    val onOpenOverflow: () -> Unit = {},
     val onPlayPause: () -> Unit = {},
     val onNext: () -> Unit = {},
     val onPrevious: () -> Unit = {},
@@ -209,12 +215,12 @@ internal fun NowPlayingContent(
     sourceBpm: Float? = null,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        NowPlayingHeader(actions = actions)
+        NowPlayingHeader(sleepTimer = sleepTimer, actions = actions)
 
-        // Scrollable, because the content is taller than a short screen once the sleep-timer
-        // presets are expanded — and on a tall one it should still sit centred. The door sits
-        // outside this weighted, scrolling region rather than as its last item, so it stays
-        // bottom-anchored (§4.2) regardless of how much the content above it scrolls.
+        // Scrollable, because the content is taller than a short screen on top of a long title —
+        // and on a tall one it should still sit centred. The door sits outside this weighted,
+        // scrolling region rather than as its last item, so it stays bottom-anchored (§4.2)
+        // regardless of how much the content above it scrolls.
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -257,11 +263,7 @@ internal fun NowPlayingContent(
                 onKeyLockChange = actions.onKeyLockChange,
             )
             TransportRow(state = state, actions = actions)
-            SleepTimerControls(
-                state = sleepTimer,
-                onStart = actions.onStartSleepTimer,
-                onCancel = actions.onCancelSleepTimer,
-            )
+            SleepTimerControls(state = sleepTimer, onCancel = actions.onCancelSleepTimer)
         }
 
         PerformanceDoor(
@@ -281,7 +283,11 @@ private val HeaderZoneWidth = 84.dp
 private val HeaderHeight = 48.dp
 
 @Composable
-private fun NowPlayingHeader(actions: NowPlayingActions, modifier: Modifier = Modifier) {
+private fun NowPlayingHeader(
+    sleepTimer: SleepTimerState,
+    actions: NowPlayingActions,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier.fillMaxWidth().height(HeaderHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -307,9 +313,118 @@ private fun NowPlayingHeader(actions: NowPlayingActions, modifier: Modifier = Mo
             IconButton(onClick = actions.onOpenQueue) {
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue")
             }
-            IconButton(onClick = actions.onOpenOverflow) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "More")
+            SleepTimerButton(
+                sleepTimer = sleepTimer,
+                onStart = actions.onStartSleepTimer,
+                onCancel = actions.onCancelSleepTimer,
+            )
+        }
+    }
+}
+
+/**
+ * §4.3/R4.3: the sleep timer as an anchored popover under this button, replacing the inline
+ * preset row that used to sit in the scrolling content. [SleepTimerControls] still renders a
+ * compact countdown further down while a timer is running, so cancelling doesn't require
+ * reopening this popover - the choice made here just picks the duration.
+ */
+private val SLEEP_MENU_WIDTH = 168.dp
+private val SLEEP_ICON_SIZE = 19.dp
+private val SLEEP_MENU_PRESET_MINUTES = listOf(15, 30, 45, 60)
+
+@Composable
+private fun SleepTimerButton(
+    sleepTimer: SleepTimerState,
+    onStart: (minutes: Int) -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    // Which preset is marked as active (README/mock §5.9's popover) - the engine only tracks a
+    // remaining duration, not which preset produced it, so this is purely a UI memory of the tap
+    // that started it, cleared the moment the timer goes back to idle by any path (cancel or
+    // natural completion) so a stale chip never reads as selected for a timer that isn't running.
+    var selectedMinutes by rememberSaveable { mutableStateOf<Int?>(null) }
+    LaunchedEffect(sleepTimer) {
+        if (sleepTimer is SleepTimerState.Idle) selectedMinutes = null
+    }
+
+    Box(modifier = modifier) {
+        IconButton(onClick = { expanded = true }) {
+            SleepTimerIcon()
+        }
+        if (expanded) {
+            val gapPx = with(LocalDensity.current) { 4.dp.roundToPx() }
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(0, gapPx),
+                onDismissRequest = { expanded = false },
+            ) {
+                Surface(
+                    modifier = Modifier.width(SLEEP_MENU_WIDTH),
+                    shape = RoundedCornerShape(CornerAlbumCell),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shadowElevation = 12.dp,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = "SLEEP TIMER",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                        when (sleepTimer) {
+                            is SleepTimerState.Idle -> SLEEP_MENU_PRESET_MINUTES.forEach { minutes ->
+                                Chip(
+                                    selected = selectedMinutes == minutes,
+                                    onClick = {
+                                        selectedMinutes = minutes
+                                        onStart(minutes)
+                                        expanded = false
+                                    },
+                                    label = "$minutes min",
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+
+                            is SleepTimerState.Running -> Chip(
+                                selected = true,
+                                onClick = {
+                                    onCancel()
+                                    expanded = false
+                                },
+                                label = if (sleepTimer.isFading) {
+                                    "Fading out · ${formatCountdown(sleepTimer.remainingMs)}"
+                                } else {
+                                    "Sleeping in ${formatCountdown(sleepTimer.remainingMs)}"
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+/**
+ * The README's "3-dot sleep-timer icon" (§5.9) - a bespoke glyph the app's icon set has no stock
+ * equivalent for, hand-drawn the way the filter/EQ curves already are rather than pulling in a
+ * second icon library for one shape. Three horizontal dots, not Material's vertical `MoreVert`
+ * kebab - the mock's own glyph, at the same fractional positions (`Slipmat.dc.html` line 158).
+ */
+@Composable
+private fun SleepTimerIcon(modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onSurface
+    Canvas(modifier = modifier.size(SLEEP_ICON_SIZE)) {
+        val radius = size.minDimension * (1.8f / 24f)
+        val y = size.height / 2f
+        listOf(5f, 12f, 19f).forEach { fx ->
+            drawCircle(color = color, radius = radius, center = Offset(fx / 24f * size.width, y))
         }
     }
 }
