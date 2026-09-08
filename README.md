@@ -7,6 +7,16 @@ separates it from other local players is the control surface: pitch and tempo as
 with a key lock toggle, a real-time effects chain you can perform with, a decoded waveform you scrub
 against, and a multiband EQ you edit by dragging a curve.
 
+The control surface is split across two screens. Now Playing carries the waveform, transport, and a
+fixed ±30% tempo card — a single track's own controls, with nothing to scroll to. Performance holds
+the effects chain (tabbed Filter / Delay / EQ, each with its own state dot), reached by a swipe or a
+door from Now Playing, so effects don't compete with playback controls for the same screen. The
+tempo range was previously a live selector (±8% / ±16% / ±50%); the redesign fixes it at ±30% and
+drops the control, since a range picker earned its place on the old single-screen layout in a way it
+does not on a screen built around one card. Surfaces are fixed neutral ramps; only the accent colour
+retints from the current track's artwork — dynamic (Material You) theming let the wallpaper move the
+surfaces too, which read as a template rather than an instrument.
+
 Kotlin and Jetpack Compose throughout. No NDK.
 
 ## Status
@@ -98,12 +108,18 @@ run, same build variant and compilation mode throughout:
 |---|---|---|---|
 | Before baseline profile | **291.6 ms** | 259.0 | 310.1 |
 | After baseline profile | **253.3 ms** | 222.3 | 272.4 |
-| Change | **−38.3 ms (−13.1 %)** | −36.7 | −37.7 |
+| After the control surface redesign, profile re-recorded | **220.2 ms** | 195.9 | 281.5 |
 
 The two distributions barely overlap: the slowest profiled run (272 ms) is faster than every
 unprofiled run but one. That separation is what makes it a result rather than a lucky median, which
 is also why the benchmark takes 10 iterations — the spread on this device is about 50 ms end to end,
 and a single run is how an "improvement" gets claimed that is really just thermal state.
+
+The redesign row is the same test, same device, against a profile re-recorded after the rebuild —
+every surface the profile's own journey touches (the library list, its row styling, the type scale,
+the fixed colour ramps) was rebuilt by the redesign, so the pre-redesign profile was already stale
+against it. That row is not evidence the redesign itself is faster; it is what a stale-vs-current
+profile is worth on top of whatever the redesign changed.
 
 Two details that decide whether the number means anything:
 
@@ -112,12 +128,15 @@ Two details that decide whether the number means anything:
   `benchmark` build type that is release, signed with the debug key so it installs without a
   keystore.
 - **The profile was confirmed embedded before measuring**, not merely generated. The APK carries
-  `assets/dexopt/baseline.prof` at 19,703 bytes. A profile that silently fails to package looks
+  `assets/dexopt/baseline.prof` at 22,488 bytes. A profile that silently fails to package looks
   exactly like one that did not help.
 
-The profile itself is 15,879 rules, 435 of them Slipmat's own. It is only worth the journey that
+The profile itself is 24,333 rules, 997 of them Slipmat's own. It is only worth the journey that
 records it: anything the generator does not exercise stays interpreted on first run, so it covers
-startup through to the library list settling rather than just launching the Activity.
+startup through to the library list settling rather than just launching the Activity. That journey
+does not yet reach Now Playing or Performance — extending it needs accessibility hooks neither
+screen has yet, since `Modifier.testTag` is invisible to the UiAutomator-based tooling the generator
+runs on.
 
 ## Testing
 
